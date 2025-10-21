@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Magazine-style headings */
+  h1 {
+    @apply font-bold tracking-tight;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 2.5rem;
+    line-height: 1.2;
+  }
+  
+  h2 {
+    @apply font-bold tracking-tight;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 2rem;
+    line-height: 1.3;
+  }
+  
+  h3 {
+    @apply font-bold tracking-tight;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 1.5rem;
+    line-height: 1.4;
+  }
+  
+  h4 {
+    @apply font-semibold;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 1.25rem;
+    line-height: 1.4;
+  }
+  
+  h5 {
+    @apply font-semibold;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 1.125rem;
+    line-height: 1.5;
+  }
+}
+
+@layer components {
+    /* Magazine-style sidebar menu items */
+    nav button span,
+    nav a span {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+    
+    /* Magazine-style resource section */
+    aside h3,
+    aside h4,
+    aside button span {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-weight: 600;
+    }
+    
+    /* Sidebar menu labels */
+    .font-medium {
+      font-family: 'Georgia', 'Times New Roman', serif;
+    }
+  }
+
+  /* Magazine carousel animation */
+  @keyframes magazine-scroll {
+    0% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(0);
+    }
+    50% {
+      transform: translateX(-50%);
+    }
+    75% {
+      transform: translateX(-50%);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+
+  .animate-magazine-scroll {
+    animation: magazine-scroll 8s linear infinite;
+    width: 300%;
+  }
+
+  /* Sponsor scroll animation */
+  @keyframes sponsor-scroll {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-sponsor-scroll {
+    animation: sponsor-scroll 20s linear infinite;
+    width: 200%;
+  }

@@ -1,0 +1,69 @@
+PROMPT – TEMPLATES (For Leaders- Principles,Directors)
+(Goal: Better decision-making, communication, planning)
+1. College Vision –
+Purpose:  Defining Vision 
+ Prompt: explain in simple words how I can create a 5-year plan to improve my college, with focus on students, teachers, and technology.
+2. Speech Helper-  write me a simple speech for students about why learning new skills is important.
+3. Meeting Notes -  
+I had a meeting with staff about student attendance. Make a short summary and next steps.
+4. Event Planning –
+ help me plan a Event celebration with ideas, budget, and schedule."
+5. Decision Support -
+ compare online learning vs classroom learning in very simple points so I can decide what’s best for my college."
+6. Daily Emails- 
+ write a short professional email to parents about fee payment reminder in polite tone."
+7. Time Management- 
+ make me a daily timetable so I can manage meetings, emails, and campus rounds without stress."
+8. Policy Drafting -
+ write a simple anti-bullying policy for college students in easy language."
+9. Report Builder -
+ format where I can show admissions, attendance, and activities. create a one-page monthly report 
+
+
+ Templates for Educators (Lecturers, Teachers)
+(Goal: Teaching help, student engagement, content creation)
+1. Lesson Planner
+create a simple 1-hour lesson plan for teaching basics of [subject]  with examples for beginners."
+2. Quiz Creator
+make a 10-question multiple choice quiz for students on [ topic ]."
+3. Simplify Topics
+explain [subject – name] in very simple language as if I’m teaching 10-year-old kids."
+4. Student Doubts
+list common questions students might ask about              [ topic – name ]  and give me short answers."
+5. Assignment Ideas
+suggest 3 fun assignments for teaching [ Topic-Name]  to college students."
+6. Classroom Activities
+give me 5 group activity ideas for teaching teamwork to students."
+7. Grading Helper-
+write feedback comments for students based on their project work – one good point and one area to improve."
+8. Presentation Aid-
+make me a simple 5-slide outline for a presentation on climate change."
+9. Parent Communication-
+draft a short message to parents about their child’s good performance in college ."
+10. Research Assistant-  
+      summarize the latest research about renewable energy in 5 simple points I can explain to students."
+
+Templates for Administration (Accounts, Office Staff, Clerks)
+(Goal: Reduce paperwork, automate routine tasks, communication)
+1. Email Drafting
+write a polite email to a vendor asking for quotation of 50 new computers."
+2. Fee Reminder-
+write a simple SMS reminder for students about    pending fees."
+3. Data Entry Help -
+create a clean table format for student admission details: Name, Course, Fees Paid, Balance.
+Note: provide data as pdf to AI
+4. Circular Writing - 
+draft a notice about holiday on account of a national festival."
+5. Meeting Minutes-
+summarize the meeting with suppliers into 5 short points."
+6. Excel Help-
+give me a formula in Excel to calculate total fees collected from 100 students."
+7. Document Translator-
+ translate this notice from English to Hindi in simple words."
+8. Policy Notes-
+make a 1-page guideline on how students should apply for TC , Memos etc."
+9. Report Generator - 
+create a monthly report format for expenses: Item, Quantity, Price, Total."
+10.Task Checklist
+     make me a daily checklist of tasks for office staff to            manage admissions, fees, and attendance.
+

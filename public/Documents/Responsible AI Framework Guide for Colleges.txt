@@ -1,0 +1,31 @@
+Responsible AI Framework Guide for Colleges
+
+Responsible AI Framework For Leaders (Principals, Directors)
+Role in Responsible AI:
+Leaders set the vision and policies that shape how AI is used across the institution.
+?  Make policies for safe AI use:
+Principals need to create clear rules about how AI should be used in the college. Example: “AI can be used for attendance tracking, but student data must not be shared outside the college system.”
+?  Approve ethical guidelines (data safety, fairness, transparency):
+Leaders should set a vision that AI must be fair to all students. Example: Ensure AI admissions don’t favor only city students while ignoring rural ones.
+.
+ Responsible AI Framework For Administration (Office Staff, Academic Admin)
+Role in Responsible AI:
+Administration ensures safe and fair implementation of AI in daily operations.
+?  Secure data (don’t leak student info):
+Admin staff must keep sensitive details (marks, Aadhaar, phone numbers) safe. Data should only be in official college systems, not pen drives or WhatsApp groups.
+?  Test AI tools before scaling:
+New AI systems (like exam checking software) should be tested in one department first to ensure accuracy and fairness.
+?  Keep transparency & documentation:
+Always record how an AI system made a decision. Example: If an AI rejected a student’s admission, the reason must be clear.
+
+Responsible AI Framework For Educators (Lecturers, Professors, Teaching Staff)
+Role in Responsible AI:
+Educators use AI responsibly in teaching, ensuring human guidance remains central.
+
+AI is a helper, not a teacher.It should support your teaching, reduce workload, and enhance learning — while keeping human judgment and fairness at the center
+Steps:
+1. Use AI as a Support Tool: Let AI generate lesson ideas, quizzes, or study material, but always review before use.
+2. Use AI responsibly (fact-check, cite):
+Teachers should not blindly trust AI answers. They must double-check facts before sharing with students. Example: If AI gives a historical date, confirm it before adding to a lesson.
+3. Maintain Academic Integrity: Remind students not to misuse AI for cheating or plagiarism.
+Protect Privacy: Avoid uploading sensitive student data into open AI tools
