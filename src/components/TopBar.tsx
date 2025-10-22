@@ -3,6 +3,7 @@ import { Search, Bell, Sun, Moon, LogOut, X, Home, BookOpen, Lightbulb, Shield, 
 import { getNotifications, getUnreadNotificationCount, markNotificationAsRead, getCurrentUser, getUserProfile } from '../utils/firebase';
 import { useSearch } from '../contexts/SearchContext';
 import AdsCarousel from './AdsCarousel';
+import AllNotificationsModal from './AllNotificationsModal';
 
 interface PageInfo {
   title: string;
@@ -37,6 +38,7 @@ const TopBar: React.FC<TopBarProps> = ({ isDarkMode, setIsDarkMode, onLogout, pa
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [showAllNotificationsModal, setShowAllNotificationsModal] = useState(false);
   
   // User profile states
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -161,6 +163,11 @@ const TopBar: React.FC<TopBarProps> = ({ isDarkMode, setIsDarkMode, onLogout, pa
     if (notification.actionUrl) {
       window.location.href = notification.actionUrl;
     }
+  };
+
+  const handleViewAllNotifications = () => {
+    setShowAllNotificationsModal(true);
+    setShowNotifications(false);
   };
 
 
@@ -331,7 +338,10 @@ const TopBar: React.FC<TopBarProps> = ({ isDarkMode, setIsDarkMode, onLogout, pa
                   )}
                 </div>
                 <div className="p-3 text-center border-t border-gray-200 dark:border-gray-700">
-                  <button className="text-sm text-[#9b0101] hover:underline">
+                  <button 
+                    onClick={handleViewAllNotifications}
+                    className="text-sm text-[#9b0101] hover:underline font-medium transition-colors"
+                  >
                     View All Notifications
                   </button>
                 </div>
@@ -473,6 +483,12 @@ const TopBar: React.FC<TopBarProps> = ({ isDarkMode, setIsDarkMode, onLogout, pa
           </button>
         </div>
       </div>
+
+      {/* All Notifications Modal */}
+      <AllNotificationsModal
+        isOpen={showAllNotificationsModal}
+        onClose={() => setShowAllNotificationsModal(false)}
+      />
 
       {/* Removed centered modal; using anchored popover above */}
     </header>

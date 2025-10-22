@@ -8,7 +8,9 @@ import {
   GripVertical,
   ArrowUp,
   ArrowDown,
-  Settings
+  Settings,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import { 
   getSidebarTabs, 
@@ -275,6 +277,16 @@ const SidebarTabsManager: React.FC = () => {
     }
   };
 
+  const handleEditTabName = (tab: SidebarTab) => {
+    setEditingTab(tab);
+    setFormData({
+      name: tab.name || tab.label,
+      icon: tab.icon,
+      active: tab.active
+    });
+    setShowForm(true);
+  };
+
   const handleMoveUp = async (index: number) => {
     if (index > 0) {
       const newTabs = [...tabs];
@@ -477,18 +489,29 @@ const SidebarTabsManager: React.FC = () => {
                         </button>
                       </div>
                       <button
-                        onClick={() => handleEditTopic(tab)}
+                        onClick={() => handleEditTabName(tab)}
                         className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                        title="Edit Tab Name"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleEditTopic(tab)}
+                        className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
                         title="Edit Topic Content"
                       >
                         <Settings className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleToggleActive(tab)}
-                        className="p-2 text-gray-600 hover:text-[#9b0101] hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        title={tab.active ? 'Deactivate' : 'Activate'}
+                        className={`p-2 rounded-lg transition-colors ${
+                          tab.active 
+                            ? 'text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20' 
+                            : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        }`}
+                        title={tab.active ? 'Deactivate Tab' : 'Activate Tab'}
                       >
-                        <Edit className="w-4 h-4" />
+                        {tab.active ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
                       </button>
                       <button
                         onClick={() => handleDelete(tab.id)}

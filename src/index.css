@@ -101,3 +101,18 @@
     animation: sponsor-scroll 20s linear infinite;
     width: 200%;
   }
+
+  /* Right to left scrolling animation */
+  @keyframes scroll-right-to-left {
+    0% {
+      transform: translateX(0%);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-scroll-right-to-left {
+    animation: scroll-right-to-left 12s linear infinite;
+    width: 200%;
+  }

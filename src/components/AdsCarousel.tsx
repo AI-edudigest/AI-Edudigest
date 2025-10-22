@@ -103,10 +103,10 @@ const AdsCarousel: React.FC = () => {
     }];
     
     return (
-      <div className="relative h-16 w-48 mx-auto">
-        <div className="relative h-full w-full perspective-1000">
+      <div className="relative h-20 w-64 mx-auto overflow-hidden">
+        <div className="relative h-full w-full">
           <div className="relative w-full h-full transition-all duration-1000 ease-in-out transform-gpu">
-            <div className="absolute inset-0 cursor-pointer">
+            <div className="flex-shrink-0 w-full h-full cursor-pointer">
               <div className="h-full w-full rounded-lg shadow-lg overflow-hidden bg-gradient-to-r from-blue-50 to-indigo-50 border border-gray-200 hover:shadow-xl transition-all duration-300">
                 <img
                   src={testAds[0].imageUrl}
@@ -129,51 +129,44 @@ const AdsCarousel: React.FC = () => {
   const currentAd = ads[currentIndex];
 
   return (
-    <div className="relative h-16 w-48 mx-auto">
+    <div className="relative h-20 w-64 mx-auto overflow-hidden">
       {/* 3D Carousel Container */}
-      <div className="relative h-full w-full perspective-1000">
+      <div className="relative h-full w-full">
         <div 
           className="relative w-full h-full transition-all duration-1000 ease-in-out transform-gpu"
           style={{
-            transform: `perspective(1000px) rotateY(${currentIndex * (360 / ads.length)}deg)`,
-            transformStyle: 'preserve-3d'
+            transform: `translateX(-${currentIndex * 100}%)`,
+            display: 'flex'
           }}
         >
-          {/* All Ads in 3D Carousel */}
-          {ads.map((ad, index) => {
-            const rotationAngle = (index * (360 / ads.length));
-            const isVisible = Math.abs(rotationAngle - (currentIndex * (360 / ads.length))) <= 90;
-            
-            return (
-              <div
-                key={ad.id}
-                className="absolute inset-0 cursor-pointer"
-                style={{
-                  transform: `rotateY(${rotationAngle}deg) translateZ(60px)`,
-                  opacity: isVisible ? 1 : 0, // Changed from 0.3 to 0 for full clarity
-                  transition: 'opacity 0.5s ease-in-out'
-                }}
-                onClick={() => handleAdClick(ad)}
-              >
-                <div className="h-full w-full rounded-lg shadow-lg overflow-hidden bg-gradient-to-r from-blue-50 to-indigo-50 border border-gray-200 hover:shadow-xl transition-all duration-300">
-                  <img
-                    src={ad.imageUrl}
-                    alt={ad.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      // Fallback to a simple colored div if image fails
-                      (e.target as HTMLImageElement).style.display = 'none';
-                      (e.target as HTMLImageElement).parentElement!.innerHTML = `
-                        <div class="w-full h-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center">
-                          <span class="text-white font-bold text-sm">${ad.title}</span>
-                        </div>
-                      `;
-                    }}
-                  />
-                </div>
+          {/* All Ads in Smooth Sliding Carousel */}
+          {ads.map((ad, index) => (
+            <div
+              key={ad.id}
+              className="flex-shrink-0 w-full h-full cursor-pointer"
+              style={{
+                minWidth: '100%'
+              }}
+              onClick={() => handleAdClick(ad)}
+            >
+              <div className="h-full w-full rounded-lg shadow-lg overflow-hidden bg-gradient-to-r from-blue-50 to-indigo-50 border border-gray-200 hover:shadow-xl transition-all duration-300">
+                <img
+                  src={ad.imageUrl}
+                  alt={ad.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback to a simple colored div if image fails
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).parentElement!.innerHTML = `
+                      <div class="w-full h-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center">
+                        <span class="text-white font-bold text-sm">${ad.title}</span>
+                      </div>
+                    `;
+                  }}
+                />
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
 

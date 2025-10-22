@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, Layers, Zap, BookOpen, Users, X, Plus } from 'lucide-react';
 import { BackButtonProps } from '../../types/common';
 import { getArticles, getSponsors } from '../../utils/firebase';
+import SponsorsCarousel from '../SponsorsCarousel';
 
 interface HomePageProps extends BackButtonProps {
   onResourceClick?: (resource: string) => void;
@@ -94,7 +95,7 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPa
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in-50 duration-500 pb-32">
+    <div className="space-y-6 animate-in fade-in-50 duration-500 pb-20">
 
       {/* Admin Quick Actions */}
       {isAdmin && (
@@ -229,29 +230,9 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPa
           ))}
         </div>
       </div>
-      {/* Our Sponsors - Sticky Footer */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="py-4">
-            <div className="flex flex-wrap justify-center items-center gap-6">
-              {sponsors.map((sponsor, index) => (
-                <a
-                  key={index}
-                  href={sponsor.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex flex-col items-center justify-center space-y-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-all duration-200 hover:scale-105"
-                >
-                  <img 
-                    src={sponsor.logo} 
-                    alt={sponsor.name}
-                    className="h-10 w-auto object-contain"
-                  />
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* Our Sponsors - Animated Carousel Footer */}
+      <div className="fixed bottom-0 left-0 right-0 z-40">
+        <SponsorsCarousel />
       </div> 
 
       {/* Article Popup Modal */}

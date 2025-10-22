@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, updateDoc, deleteDoc, getDocs, query, orderBy, limit, where, onSnapshot } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
@@ -96,6 +96,145 @@ export const getCurrentUser = (): User | null => {
 
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
+};
+
+// Google Sign-In functions
+export const signInWithGoogle = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
+    // Add custom parameters to prompt user to select account
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    
+    // Try popup first (better UX for desktop)
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Create or update user document in Firestore
+      await ensureUserDocument(user);
+      
+      return { user, error: null };
+    } catch (popupError: any) {
+      // If popup is blocked, fall back to redirect
+      if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/cancelled-popup-request') {
+        console.log('Popup blocked, falling back to redirect...');
+        await signInWithRedirect(auth, provider);
+        // Redirect will happen, return pending state
+        return { user: null, error: null, isPending: true };
+      }
+      throw popupError;
+    }
+  } catch (error: any) {
+    console.error('Google sign-in error:', error);
+    
+    // Provide user-friendly error messages
+    let userFriendlyMessage = '';
+    
+    switch (error.code) {
+      case 'auth/popup-closed-by-user':
+        userFriendlyMessage = 'Sign-in was cancelled. Please try again.';
+        break;
+      case 'auth/network-request-failed':
+        userFriendlyMessage = 'Network error. Please check your internet connection.';
+        break;
+      case 'auth/too-many-requests':
+        userFriendlyMessage = 'Too many attempts. Please try again later.';
+        break;
+      case 'auth/account-exists-with-different-credential':
+        userFriendlyMessage = 'An account already exists with this email using a different sign-in method. Please use your email and password to sign in.';
+        break;
+      default:
+        userFriendlyMessage = 'Failed to sign in with Google. Please try again.';
+    }
+    
+    return { user: null, error: userFriendlyMessage };
+  }
+};
+
+// Handle redirect result for Google Sign-In
+export const handleGoogleRedirectResult = async () => {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result) {
+      const user = result.user;
+      await ensureUserDocument(user);
+      return { user, error: null };
+    }
+    return { user: null, error: null };
+  } catch (error: any) {
+    console.error('Google redirect error:', error);
+    
+    let userFriendlyMessage = '';
+    switch (error.code) {
+      case 'auth/account-exists-with-different-credential':
+        userFriendlyMessage = 'An account already exists with this email using a different sign-in method.';
+        break;
+      default:
+        userFriendlyMessage = 'Failed to complete Google sign-in.';
+    }
+    
+    return { user: null, error: userFriendlyMessage };
+  }
+};
+
+// Ensure user document exists in Firestore after Google sign-in
+const ensureUserDocument = async (user: User) => {
+  try {
+    const userDocRef = doc(db, 'users', user.uid);
+    const userDoc = await getDoc(userDocRef);
+    
+    if (!userDoc.exists()) {
+      // New user - create document with Google profile info
+      await setDoc(userDocRef, {
+        uid: user.uid,
+        email: user.email,
+        firstName: user.displayName?.split(' ')[0] || '',
+        lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+        photoURL: user.photoURL || '',
+        role: 'student', // default role
+        institution: '', // Will be empty initially
+        institutionId: '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        provider: 'google'
+      });
+      console.log('Created new user document for Google user:', user.uid);
+    } else {
+      // Existing user - update last login and merge any new info
+      await setDoc(userDocRef, {
+        lastLoginAt: new Date(),
+        photoURL: user.photoURL || userDoc.data().photoURL || '',
+        updatedAt: new Date()
+      }, { merge: true });
+      console.log('Updated existing user document:', user.uid);
+    }
+  } catch (error) {
+    console.error('Error ensuring user document:', error);
+    throw error;
+  }
+};
+
+// Update user profile (for completing profile after Google sign-in)
+export const updateUserProfile = async (userId: string, profileData: {
+  institution?: string;
+  institutionId?: string;
+  role?: string;
+  firstName?: string;
+  lastName?: string;
+}) => {
+  try {
+    const userDocRef = doc(db, 'users', userId);
+    await updateDoc(userDocRef, {
+      ...profileData,
+      updatedAt: new Date()
+    });
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error updating user profile:', error);
+    return { success: false, error: error.message };
+  }
 };
 
 // Firestore functions
@@ -443,6 +582,71 @@ export const getUnreadNotificationCount = async () => {
   } catch (error) {
     console.error('Error getting unread notification count:', error);
     return 0;
+  }
+};
+
+// Get all notifications (for "View All" functionality)
+export const getAllNotifications = async () => {
+  try {
+    const q = query(
+      collection(db, 'notifications'),
+      orderBy('createdAt', 'desc')
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error getting all notifications:', error);
+    return [];
+  }
+};
+
+// Mark all notifications as read
+export const markAllNotificationsAsRead = async () => {
+  try {
+    const q = query(
+      collection(db, 'notifications'),
+      where('isRead', '==', false)
+    );
+    const querySnapshot = await getDocs(q);
+    
+    const batch = querySnapshot.docs.map(doc => 
+      updateDoc(doc.ref, { isRead: true })
+    );
+    
+    await Promise.all(batch);
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error marking all notifications as read:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Clear all notifications (delete them)
+export const clearAllNotifications = async () => {
+  try {
+    const q = query(collection(db, 'notifications'));
+    const querySnapshot = await getDocs(q);
+    
+    const batch = querySnapshot.docs.map(doc => 
+      deleteDoc(doc.ref)
+    );
+    
+    await Promise.all(batch);
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error clearing all notifications:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Delete a specific notification
+export const deleteNotification = async (notificationId: string) => {
+  try {
+    await deleteDoc(doc(db, 'notifications', notificationId));
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error deleting notification:', error);
+    return { success: false, error: error.message };
   }
 };
 

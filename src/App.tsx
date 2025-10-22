@@ -23,6 +23,7 @@ import LoginPage from './components/pages/LoginPage';
 import SignUpPage from './components/pages/SignUpPage';
 import AdminLayout from './components/admin/AdminLayout';
 import SidebarTabContent from './components/pages/SidebarTabContent';
+import ProfileCompletionModal from './components/ProfileCompletionModal';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -39,6 +40,10 @@ function App() {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [activeSidebarTabId, setActiveSidebarTabId] = useState<string | null>(null);
   const [currentTopicName, setCurrentTopicName] = useState<string | null>(null);
+  
+  // Profile completion modal states
+  const [showProfileCompletion, setShowProfileCompletion] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   
   // Simple welcome screen states
   const [showSplash, setShowSplash] = useState(true);
@@ -150,6 +155,10 @@ function App() {
     console.log('🎉 Splash screen finished, app is ready!');
   };
 
+  const handleProfileCompletionClose = () => {
+    setShowProfileCompletion(false);
+  };
+
   const handleSearchResultClick = (result: any) => {
     // Navigate to the section based on the search result
     if (result.section) {
@@ -187,10 +196,28 @@ function App() {
       setCheckingAuth(true);
       if (user) {
         setIsLoggedIn(true);
+        setCurrentUser(user);
         try {
           const role = await getUserRole(user.uid);
           setUserRole(role);
           setIsAdmin(role === 'admin');
+          
+          // Check if this is a Google user with incomplete profile
+          const { getUserProfile } = await import('./utils/firebase');
+          const { profile } = await getUserProfile(user.uid);
+          
+          // Show profile completion modal if:
+          // 1. User signed in with Google (has photoURL and provider is google)
+          // 2. Institution is empty or not specified
+          // 3. Not in signup process (to avoid double modals)
+          if (user.photoURL && 
+              (!profile?.institution || profile.institution === '' || profile.institution === 'Not specified') &&
+              !isSignupProcess) {
+            // Small delay to ensure UI is ready
+            setTimeout(() => {
+              setShowProfileCompletion(true);
+            }, 1000);
+          }
         } catch (error) {
           console.error('Error getting user role:', error);
           setUserRole('user');
@@ -200,6 +227,8 @@ function App() {
         setIsLoggedIn(false);
         setUserRole('user');
         setIsAdmin(false);
+        setCurrentUser(null);
+        setShowProfileCompletion(false);
       }
       setCheckingAuth(false);
       
@@ -444,6 +473,21 @@ function App() {
 
         {/* Search Results Overlay */}
         <SearchResults onResultClick={handleSearchResultClick} />
+        
+        {/* Profile Completion Modal */}
+        {showProfileCompletion && currentUser && (
+          <ProfileCompletionModal
+            isOpen={showProfileCompletion}
+            onClose={handleProfileCompletionClose}
+            user={{
+              uid: currentUser.uid,
+              email: currentUser.email || '',
+              firstName: currentUser.displayName?.split(' ')[0] || '',
+              lastName: currentUser.displayName?.split(' ').slice(1).join(' ') || '',
+              photoURL: currentUser.photoURL || undefined
+            }}
+          />
+        )}
       </div>
     </SearchProvider>
   );
