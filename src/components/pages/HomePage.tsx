@@ -3,6 +3,7 @@ import { Clock, Layers, Zap, BookOpen, Users, X, Plus } from 'lucide-react';
 import { BackButtonProps } from '../../types/common';
 import { getArticles, getSponsors } from '../../utils/firebase';
 import SponsorsCarousel from '../SponsorsCarousel';
+import ArticleTTS from '../common/ArticleTTS';
 
 interface HomePageProps extends BackButtonProps {
   onResourceClick?: (resource: string) => void;
@@ -15,6 +16,7 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPa
   const [sponsors, setSponsors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedArticle, setSelectedArticle] = useState<any>(null);
+  const [playingArticleId, setPlayingArticleId] = useState<string | null>(null);
 
   // Hardcoded news items removed - news is now managed dynamically through articles
 
@@ -83,6 +85,14 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPa
         break;
       default:
         break;
+    }
+  };
+
+  const handleTTSPlayStateChange = (isPlaying: boolean, articleId: string) => {
+    if (isPlaying) {
+      setPlayingArticleId(articleId);
+    } else {
+      setPlayingArticleId(null);
     }
   };
 
@@ -165,10 +175,22 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPa
             {articles.slice(0, 6).map((article: any) => (
               <div 
                 key={article.id} 
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all duration-200 hover:-translate-y-1 cursor-pointer"
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all duration-200 hover:-translate-y-1 cursor-pointer relative"
                 onClick={() => setSelectedArticle(article)}
               >
-                <div className="flex items-start justify-between">
+                {/* TTS Button - Top Right Corner */}
+                <div className="absolute top-4 right-4 z-10">
+                  <ArticleTTS
+                    articleText={article.excerpt}
+                    articleTitle={article.title}
+                    articleId={article.id}
+                    isActive={playingArticleId === article.id}
+                    onPlayStateChange={handleTTSPlayStateChange}
+                    className="transition-opacity duration-200"
+                  />
+                </div>
+                
+                <div className="flex items-start justify-between pr-12">
                   <div className="flex-1">
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
                       {article.title}
@@ -258,12 +280,23 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPa
                   </span>
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedArticle(null)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              </button>
+              <div className="flex items-center space-x-3">
+                {/* TTS Button for Modal */}
+                <ArticleTTS
+                  articleText={selectedArticle.content}
+                  articleTitle={selectedArticle.title}
+                  articleId={`modal-${selectedArticle.id}`}
+                  isActive={playingArticleId === `modal-${selectedArticle.id}`}
+                  onPlayStateChange={handleTTSPlayStateChange}
+                  className="transition-opacity duration-200"
+                />
+                <button
+                  onClick={() => setSelectedArticle(null)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Content */}

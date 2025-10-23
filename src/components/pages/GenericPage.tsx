@@ -1,5 +1,6 @@
 import React from 'react';
 import { BookOpen, Brain, Shield, Bot, FileText } from 'lucide-react';
+import ArticleTTS from '../common/ArticleTTS';
 
 interface GenericPageProps {
   title: string;
@@ -264,8 +265,17 @@ const GenericPage: React.FC<GenericPageProps> = ({ title, description, section }
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Overview</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 relative">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Overview</h2>
+              <ArticleTTS
+                articleText={content.join(' ')}
+                articleTitle={`${title} - Overview`}
+                articleId={`generic-${section}-overview`}
+                isActive={false}
+                className="absolute top-6 right-6"
+              />
+            </div>
             <div className="space-y-4">
               {content.map((paragraph, index) => (
                 <p key={index} className="text-gray-600 dark:text-gray-300 leading-relaxed">

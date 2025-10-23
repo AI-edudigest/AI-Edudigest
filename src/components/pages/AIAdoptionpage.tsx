@@ -1,7 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Lightbulb } from 'lucide-react';
+import ArticleTTS from '../common/ArticleTTS';
 
 const AIAdoptionPage: React.FC = () => {
+  const [playingArticleId, setPlayingArticleId] = useState<string | null>(null);
+
+  const handleTTSPlayStateChange = (isPlaying: boolean, articleId: string) => {
+    if (isPlaying) {
+      setPlayingArticleId(articleId);
+    } else {
+      setPlayingArticleId(null);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-500">
 
@@ -9,10 +20,20 @@ const AIAdoptionPage: React.FC = () => {
       <div className="space-y-6">
         
         {/* Section 1: What is AI Adoption */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            1. What is AI Adoption in Colleges?
-          </h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 relative">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              1. What is AI Adoption in Colleges?
+            </h2>
+            <ArticleTTS
+              articleText="AI adoption in colleges refers to the process of integrating artificial intelligence technologies into academic, administrative, and student-support activities. This includes using AI to enhance teaching and learning, automate repetitive administrative tasks, support decision-making with data-driven insights, personalize student experiences, and improve institutional efficiency. It's not about replacing educators or staff but empowering them with AI to do their jobs better, faster, and smarter."
+              articleTitle="What is AI Adoption in Colleges?"
+              articleId="ai-adoption-section-1"
+              isActive={playingArticleId === "ai-adoption-section-1"}
+              onPlayStateChange={handleTTSPlayStateChange}
+              className="absolute top-6 right-6"
+            />
+          </div>
           <div className="text-gray-700 dark:text-gray-300 leading-relaxed space-y-4">
             <p>
               AI adoption in colleges refers to the process of integrating artificial intelligence technologies into academic, administrative, and student-support activities. This includes using AI to:

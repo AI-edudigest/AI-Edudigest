@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Play, ExternalLink } from 'lucide-react';
 import EguideViewer from './EguideViewer';
+import ArticleTTS from '../common/ArticleTTS';
 
 interface SidebarTabContentProps {
   tabId: string;
@@ -30,6 +31,15 @@ const SidebarTabContent: React.FC<SidebarTabContentProps> = ({
 }) => {
   const [tab, setTab] = useState<SidebarTab | null>(null);
   const [loading, setLoading] = useState(true);
+  const [playingArticleId, setPlayingArticleId] = useState<string | null>(null);
+
+  const handleTTSPlayStateChange = (isPlaying: boolean, articleId: string) => {
+    if (isPlaying) {
+      setPlayingArticleId(articleId);
+    } else {
+      setPlayingArticleId(null);
+    }
+  };
 
   useEffect(() => {
     const fetchTabContent = async () => {
@@ -88,29 +98,45 @@ const SidebarTabContent: React.FC<SidebarTabContentProps> = ({
   return (
     <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 
-          className="text-3xl font-bold text-gray-900 dark:text-white mb-2"
-          style={{ 
-            color: tab.headingColor || '#000000',
-            fontSize: tab.fontSize || '32px',
-            fontStyle: tab.fontStyle || 'normal'
-          }}
-        >
-          {tab.headingText || tab.topicName || tab.label}
-        </h1>
-        
-        {tab.subTopic && (
-          <h2 className="text-xl text-gray-600 dark:text-gray-400 mb-4">
-            {tab.subTopic}
-          </h2>
-        )}
-        
-        {tab.topicName && tab.topicName !== tab.headingText && (
-          <p className="text-lg text-gray-700 dark:text-gray-300 mb-4">
-            {tab.topicName}
-          </p>
-        )}
+      <div className="mb-6 relative">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <h1 
+              className="text-3xl font-bold text-gray-900 dark:text-white mb-2"
+              style={{ 
+                color: tab.headingColor || '#000000',
+                fontSize: tab.fontSize || '32px',
+                fontStyle: tab.fontStyle || 'normal'
+              }}
+            >
+              {tab.headingText || tab.topicName || tab.label}
+            </h1>
+            
+            {tab.subTopic && (
+              <h2 className="text-xl text-gray-600 dark:text-gray-400 mb-4">
+                {tab.subTopic}
+              </h2>
+            )}
+            
+            {tab.topicName && tab.topicName !== tab.headingText && (
+              <p className="text-lg text-gray-700 dark:text-gray-300 mb-4">
+                {tab.topicName}
+              </p>
+            )}
+          </div>
+          
+          {/* TTS Button for Header */}
+          {(tab.headingText || tab.topicName || tab.label) && (
+            <ArticleTTS
+              articleText={`${tab.headingText || tab.topicName || tab.label}${tab.subTopic ? '. ' + tab.subTopic : ''}${tab.topicName && tab.topicName !== tab.headingText ? '. ' + tab.topicName : ''}`.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}
+              articleTitle={tab.headingText || tab.topicName || tab.label || 'Content'}
+              articleId={`sidebar-tab-header-${tabId}`}
+              isActive={playingArticleId === `sidebar-tab-header-${tabId}`}
+              onPlayStateChange={handleTTSPlayStateChange}
+              className="absolute top-0 right-0"
+            />
+          )}
+        </div>
       </div>
 
       {/* YouTube Video */}
@@ -144,10 +170,20 @@ const SidebarTabContent: React.FC<SidebarTabContentProps> = ({
 
       {/* Main Content */}
       {tab.content && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Content
-          </h3>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 relative">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Content
+            </h3>
+            <ArticleTTS
+              articleText={tab.content ? tab.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : ''}
+              articleTitle={tab.headingText || tab.topicName || tab.label || 'Content'}
+              articleId={`sidebar-tab-${tabId}`}
+              isActive={playingArticleId === `sidebar-tab-${tabId}`}
+              onPlayStateChange={handleTTSPlayStateChange}
+              className="absolute top-6 right-6"
+            />
+          </div>
           <div 
             className="text-gray-900 dark:text-white leading-relaxed"
             dangerouslySetInnerHTML={{ __html: tab.content }}

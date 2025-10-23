@@ -1,7 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Shield } from 'lucide-react';
+import ArticleTTS from '../common/ArticleTTS';
 
 const ResponsibleAIFrameworkGuide: React.FC = () => {
+  const [playingArticleId, setPlayingArticleId] = useState<string | null>(null);
+
+  const handleTTSPlayStateChange = (isPlaying: boolean, articleId: string) => {
+    if (isPlaying) {
+      setPlayingArticleId(articleId);
+    } else {
+      setPlayingArticleId(null);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-500">
 
@@ -9,10 +20,20 @@ const ResponsibleAIFrameworkGuide: React.FC = () => {
       <div className="space-y-6">
         
         {/* Section 1: For Leaders */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            1. Responsible AI Framework For Leaders (Principals, Directors)
-          </h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 relative">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              1. Responsible AI Framework For Leaders (Principals, Directors)
+            </h2>
+            <ArticleTTS
+              articleText="Leaders set the vision and policies that shape how AI is used across the institution. Principals need to create clear rules about how AI should be used in the college. For example, AI can be used for attendance tracking, but student data must not be shared outside the college system. Leaders should set a vision that AI must be fair to all students. For example, ensure AI admissions don't favor only city students while ignoring rural ones."
+              articleTitle="Responsible AI Framework For Leaders"
+              articleId="responsible-ai-leaders-section"
+              isActive={playingArticleId === "responsible-ai-leaders-section"}
+              onPlayStateChange={handleTTSPlayStateChange}
+              className="absolute top-6 right-6"
+            />
+          </div>
           <div className="text-gray-700 dark:text-gray-300 leading-relaxed space-y-4">
             <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Role in Responsible AI:</h3>
