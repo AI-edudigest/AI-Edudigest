@@ -23,6 +23,7 @@ import ResourceTabsManager from './ResourceTabsManager';
 import ResourceTabContentManager from './ResourceTabContentManager';
 import SidebarTabsManager from './SidebarTabsManager';
 import EventsManager from './EventsManager';
+import EguideContentManager from './EguideContentManager';
 
 interface AdminLayoutProps {
   onLogout: () => void;
@@ -60,11 +61,15 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout, onBackToHome }) => 
         return <EventsManager />;
       case 'resourceTabs':
         return contentManagerTab ? (
-          <ResourceTabContentManager 
-            tabId={contentManagerTab.tabId}
-            tabName={contentManagerTab.tabName}
-            onBack={() => setContentManagerTab(null)}
-          />
+          contentManagerTab.tabName.toLowerCase() === 'e-guide' ? (
+            <EguideContentManager />
+          ) : (
+            <ResourceTabContentManager 
+              tabId={contentManagerTab.tabId}
+              tabName={contentManagerTab.tabName}
+              onBack={() => setContentManagerTab(null)}
+            />
+          )
         ) : (
           <ResourceTabsManager onManageContent={(tabId, tabName) => setContentManagerTab({tabId, tabName})} />
         );

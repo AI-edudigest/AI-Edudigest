@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Play, ExternalLink } from 'lucide-react';
+import EguideViewer from './EguideViewer';
 
 interface SidebarTabContentProps {
   tabId: string;
@@ -55,6 +56,11 @@ const SidebarTabContent: React.FC<SidebarTabContentProps> = ({
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9b0101]"></div>
       </div>
     );
+  }
+
+  // Handle E-Guide tab specially
+  if (tab && tab.name?.toLowerCase().includes('e-guide')) {
+    return <EguideViewer />;
   }
 
   if (!tab) {
