@@ -507,10 +507,10 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onBackToLogin 
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#9b0101] focus:border-[#9b0101] transition-all duration-300 bg-white/70 backdrop-blur-sm"
               >
-                <option value="student">Student</option>
-                <option value="faculty">Faculty</option>
-                <option value="admin">Administrator</option>
                 <option value="leaders">Leaders</option>
+                <option value="faculty">Faculty</option>
+                <option value="college-admin">College Administration Staff</option>
+                <option value="student">Student</option>
               </select>
             </div>
 

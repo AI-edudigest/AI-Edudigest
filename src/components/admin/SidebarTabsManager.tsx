@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
   Edit, 
@@ -71,6 +71,9 @@ const SidebarTabsManager: React.FC = () => {
     fontStyle: 'normal'
   });
 
+  // Editor ref for uncontrolled content management
+  const editorRef = useRef<HTMLDivElement>(null);
+
   // Icon options
   const iconOptions = [
     { value: 'Home', label: 'Home', icon: '🏠' },
@@ -92,6 +95,23 @@ const SidebarTabsManager: React.FC = () => {
   useEffect(() => {
     fetchTabs();
   }, []);
+
+  // Force LTR direction when editor is shown and load initial content
+  useEffect(() => {
+    if (showTopicEditor && editorRef.current) {
+      // Set permanent LTR attributes
+      editorRef.current.setAttribute('dir', 'ltr');
+      editorRef.current.setAttribute('lang', 'en');
+      editorRef.current.style.direction = 'ltr';
+      editorRef.current.style.textAlign = 'left';
+      editorRef.current.style.unicodeBidi = 'plaintext';
+      
+      // Load initial content only once when editor opens
+      if (topicFormData.content) {
+        editorRef.current.innerHTML = topicFormData.content;
+      }
+    }
+  }, [showTopicEditor]);
 
   const fetchTabs = async () => {
     try {
@@ -699,7 +719,7 @@ const SidebarTabsManager: React.FC = () => {
                       onClick={(e) => {
                         e.preventDefault();
                         document.execCommand('formatBlock', false, 'h1');
-                        document.getElementById('content-editor')?.focus();
+                        editorRef.current?.focus();
                       }}
                       title="Heading 1"
                     >
@@ -711,7 +731,7 @@ const SidebarTabsManager: React.FC = () => {
                       onClick={(e) => {
                         e.preventDefault();
                         document.execCommand('formatBlock', false, 'h2');
-                        document.getElementById('content-editor')?.focus();
+                        editorRef.current?.focus();
                       }}
                       title="Heading 2"
                     >
@@ -723,7 +743,7 @@ const SidebarTabsManager: React.FC = () => {
                       onClick={(e) => {
                         e.preventDefault();
                         document.execCommand('formatBlock', false, 'h3');
-                        document.getElementById('content-editor')?.focus();
+                        editorRef.current?.focus();
                       }}
                       title="Heading 3"
                     >
@@ -735,7 +755,7 @@ const SidebarTabsManager: React.FC = () => {
                       onClick={(e) => {
                         e.preventDefault();
                         document.execCommand('formatBlock', false, 'p');
-                        document.getElementById('content-editor')?.focus();
+                        editorRef.current?.focus();
                       }}
                       title="Normal Paragraph"
                     >
@@ -752,7 +772,7 @@ const SidebarTabsManager: React.FC = () => {
                       onClick={(e) => {
                         e.preventDefault();
                         document.execCommand('bold', false, undefined);
-                        document.getElementById('content-editor')?.focus();
+                        editorRef.current?.focus();
                       }}
                       title="Bold"
                     >
@@ -764,7 +784,7 @@ const SidebarTabsManager: React.FC = () => {
                       onClick={(e) => {
                         e.preventDefault();
                         document.execCommand('italic', false, undefined);
-                        document.getElementById('content-editor')?.focus();
+                        editorRef.current?.focus();
                       }}
                     >
                       I
@@ -775,7 +795,7 @@ const SidebarTabsManager: React.FC = () => {
                       onClick={(e) => {
                         e.preventDefault();
                         document.execCommand('underline', false, undefined);
-                        document.getElementById('content-editor')?.focus();
+                        editorRef.current?.focus();
                       }}
                     >
                       U
@@ -786,7 +806,7 @@ const SidebarTabsManager: React.FC = () => {
                       onClick={(e) => {
                         e.preventDefault();
                         document.execCommand('justifyLeft', false, undefined);
-                        document.getElementById('content-editor')?.focus();
+                        editorRef.current?.focus();
                       }}
                     >
                       ≡
@@ -797,7 +817,7 @@ const SidebarTabsManager: React.FC = () => {
                       onClick={(e) => {
                         e.preventDefault();
                         document.execCommand('justifyCenter', false, undefined);
-                        document.getElementById('content-editor')?.focus();
+                        editorRef.current?.focus();
                       }}
                     >
                       ≡
@@ -808,7 +828,7 @@ const SidebarTabsManager: React.FC = () => {
                       onClick={(e) => {
                         e.preventDefault();
                         document.execCommand('justifyRight', false, undefined);
-                        document.getElementById('content-editor')?.focus();
+                        editorRef.current?.focus();
                       }}
                     >
                       ≡
@@ -819,7 +839,7 @@ const SidebarTabsManager: React.FC = () => {
                       onClick={(e) => {
                         e.preventDefault();
                         document.execCommand('insertUnorderedList', false, undefined);
-                        document.getElementById('content-editor')?.focus();
+                        editorRef.current?.focus();
                       }}
                     >
                       •
@@ -830,7 +850,7 @@ const SidebarTabsManager: React.FC = () => {
                       onClick={(e) => {
                         e.preventDefault();
                         document.execCommand('insertOrderedList', false, undefined);
-                        document.getElementById('content-editor')?.focus();
+                        editorRef.current?.focus();
                       }}
                     >
                       1.
@@ -842,29 +862,29 @@ const SidebarTabsManager: React.FC = () => {
                     {/* Font Size Options */}
                     <select
                       onChange={(e) => {
-                        const editor = document.getElementById('content-editor');
-                        if (editor) {
-                          editor.style.fontSize = e.target.value;
-                          editor.focus();
-                        }
+                        document.execCommand('fontSize', false, e.target.value);
+                        editorRef.current?.focus();
                       }}
                       className="px-2 py-1 text-sm bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded hover:bg-gray-100 dark:hover:bg-gray-500"
                       title="Font Size"
                     >
-                      <option value="12px">12px</option>
-                      <option value="14px">14px</option>
-                      <option value="16px">16px</option>
-                      <option value="18px">18px</option>
-                      <option value="20px">20px</option>
-                      <option value="24px">24px</option>
+                      <option value="1">8px</option>
+                      <option value="2">10px</option>
+                      <option value="3">12px</option>
+                      <option value="4">14px</option>
+                      <option value="5">18px</option>
+                      <option value="6">24px</option>
+                      <option value="7">36px</option>
                     </select>
                     
                     {/* Text Color */}
                     <input
                       type="color"
                       onChange={(e) => {
+                        // Enable CSS mode for proper styling
+                        document.execCommand('styleWithCSS', false, true);
                         document.execCommand('foreColor', false, e.target.value);
-                        document.getElementById('content-editor')?.focus();
+                        editorRef.current?.focus();
                       }}
                       className="w-8 h-6 border border-gray-300 dark:border-gray-500 rounded cursor-pointer"
                       title="Text Color"
@@ -874,8 +894,10 @@ const SidebarTabsManager: React.FC = () => {
                     <input
                       type="color"
                       onChange={(e) => {
+                        // Enable CSS mode for proper styling
+                        document.execCommand('styleWithCSS', false, true);
                         document.execCommand('backColor', false, e.target.value);
-                        document.getElementById('content-editor')?.focus();
+                        editorRef.current?.focus();
                       }}
                       className="w-8 h-6 border border-gray-300 dark:border-gray-500 rounded cursor-pointer"
                       title="Background Color"
@@ -884,10 +906,14 @@ const SidebarTabsManager: React.FC = () => {
                   
                   <div className="relative">
                     <div
+                      ref={editorRef}
                       id="content-editor"
                       contentEditable
+                      dir="ltr"
+                      lang="en"
                       onInput={(e) => {
                         const target = e.target as HTMLElement;
+                        // Store HTML but DO NOT overwrite innerHTML to prevent re-renders
                         setTopicFormData({ ...topicFormData, content: target.innerHTML });
                       }}
                       onFocus={(e) => {
@@ -901,10 +927,21 @@ const SidebarTabsManager: React.FC = () => {
                         if (target.innerHTML === '' || target.innerHTML === '<br>') {
                           target.innerHTML = '';
                         }
+                        // Final sync on blur
+                        setTopicFormData({ ...topicFormData, content: target.innerHTML });
                       }}
-                      dangerouslySetInnerHTML={{ __html: topicFormData.content || '' }}
+                      onPaste={(e) => {
+                        e.preventDefault();
+                        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+                        document.execCommand('insertText', false, text);
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-b-lg focus:ring-2 focus:ring-[#9b0101] focus:border-[#9b0101] bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[200px] focus:outline-none"
-                      style={{ minHeight: '200px' }}
+                      style={{ 
+                        minHeight: '200px',
+                        direction: 'ltr',
+                        textAlign: 'left',
+                        unicodeBidi: 'plaintext'
+                      }}
                       data-placeholder="Enter topic content"
                     />
                     {!topicFormData.content && (

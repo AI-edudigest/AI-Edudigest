@@ -215,6 +215,7 @@ const TopBar: React.FC<TopBarProps> = ({ isDarkMode, setIsDarkMode, onLogout, pa
       case 'admin': return 'Administrator';
       case 'leaders': return 'Leader';
       case 'faculty': return 'Faculty';
+      case 'college-admin': return 'College Administration Staff';
       case 'student': return 'Student';
       default: return 'User';
     }
