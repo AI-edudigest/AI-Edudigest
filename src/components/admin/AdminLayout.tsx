@@ -11,7 +11,8 @@ import {
   ArrowLeft,
   BookOpen,
   MessageSquare,
-  Calendar
+  Calendar,
+  Newspaper
 } from 'lucide-react';
 import AdminDashboard from './AdminDashboard';
 import ArticlesManager from './ArticlesManager';
@@ -24,6 +25,7 @@ import ResourceTabContentManager from './ResourceTabContentManager';
 import SidebarTabsManager from './SidebarTabsManager';
 import EventsManager from './EventsManager';
 import EguideContentManager from './EguideContentManager';
+import LatestUpdatesManager from './LatestUpdatesManager';
 
 interface AdminLayoutProps {
   onLogout: () => void;
@@ -41,6 +43,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout, onBackToHome }) => 
     { id: 'sponsors', label: 'Sponsors', icon: Megaphone },
     { id: 'ads', label: 'Ads', icon: Megaphone },
     { id: 'events', label: 'Events', icon: Calendar },
+    { id: 'news', label: 'Latest Updates', icon: Newspaper },
     { id: 'resourceTabs', label: 'Resource Tabs', icon: BookOpen },
     { id: 'sidebarTabs', label: 'Sidebar Tabs', icon: LayoutDashboard },
     { id: 'users', label: 'Users', icon: Users },
@@ -59,6 +62,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout, onBackToHome }) => 
         return <AdsManager />;
       case 'events':
         return <EventsManager />;
+      case 'news':
+        return <LatestUpdatesManager />;
       case 'resourceTabs':
         return contentManagerTab ? (
           contentManagerTab.tabName.toLowerCase() === 'e-guide' ? (

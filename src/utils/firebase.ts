@@ -26,6 +26,91 @@ export const db = getFirestore(app);
 // Initialize Firebase Storage and get a reference to the service
 export const storage = getStorage(app);
 
+// News/Updates Management Functions
+export const getNewsUpdates = async () => {
+  try {
+    const newsRef = collection(db, 'newsUpdates');
+    const q = query(newsRef, where('active', '==', true), orderBy('priority', 'asc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error fetching news updates:', error);
+    return [];
+  }
+};
+
+export const createNewsUpdate = async (newsData: any) => {
+  try {
+    const newsRef = collection(db, 'newsUpdates');
+    const docRef = await addDoc(newsRef, {
+      ...newsData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      active: true
+    });
+    return { id: docRef.id, success: true };
+  } catch (error) {
+    console.error('Error creating news update:', error);
+    return { id: null, success: false, error };
+  }
+};
+
+export const updateNewsUpdate = async (newsId: string, newsData: any) => {
+  try {
+    const newsRef = doc(db, 'newsUpdates', newsId);
+    await updateDoc(newsRef, {
+      ...newsData,
+      updatedAt: new Date()
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating news update:', error);
+    return { success: false, error };
+  }
+};
+
+export const deleteNewsUpdate = async (newsId: string) => {
+  try {
+    const newsRef = doc(db, 'newsUpdates', newsId);
+    await deleteDoc(newsRef);
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting news update:', error);
+    return { success: false, error };
+  }
+};
+
+export const reorderNewsUpdates = async (newsList: any[]) => {
+  try {
+    const batch = [];
+    newsList.forEach((item, index) => {
+      const newsRef = doc(db, 'newsUpdates', item.id);
+      batch.push(updateDoc(newsRef, { priority: index + 1 }));
+    });
+    await Promise.all(batch);
+    return { success: true };
+  } catch (error) {
+    console.error('Error reordering news updates:', error);
+    return { success: false, error };
+  }
+};
+
+export const subscribeToNewsUpdates = (callback: (updates: any[]) => void) => {
+  const newsRef = collection(db, 'newsUpdates');
+  const q = query(newsRef, where('active', '==', true), orderBy('priority', 'asc'));
+  
+  return onSnapshot(q, (querySnapshot) => {
+    const updates = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    callback(updates);
+  });
+};
+
 // Authentication functions
 export const signUp = async (email: string, password: string, userData?: any) => {
   try {

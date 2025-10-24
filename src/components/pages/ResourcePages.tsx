@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Calendar, Book, Lightbulb, GraduationCap, ExternalLink, Clock, MapPin, Star, Download, ChevronLeft, Check, Plus, X, Trash2 } from 'lucide-react';
+import { Zap, Calendar, Book, Lightbulb, GraduationCap, ExternalLink, Clock, MapPin, Star, Download, ChevronLeft, Check, Plus, X, Trash2, BookOpen } from 'lucide-react';
 import { BackButtonProps } from '../../types/common';
 import { getResourceContent as getFirebaseResourceContent, getAITools, getResourceTabs, getResourceTabContent, addEvent, deleteEvent, getEvents, subscribeToEvents } from '../../utils/firebase';
 import FeedbackPage from './FeedbackPage';
+import EguideViewer from './EguideViewer';
 
 interface ResourcePageProps extends BackButtonProps {
   resourceType: string;
@@ -269,6 +270,7 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
       case 'recommendedBooks': return 'recommendedBooks';
       case 'promptTemplates': return 'promptTemplates';
       case 'freeCourses': return 'freeCourses';
+      case 'eguide': return 'eguideContent';
       default: return null;
     }
   };
@@ -493,6 +495,16 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
           bgColor: 'bg-purple-50 dark:bg-purple-900/20',
           borderColor: 'border-purple-200 dark:border-purple-800',
           items: [] // Empty - Courses are now managed dynamically
+        };
+      
+      case 'eguide':
+        return {
+          title: 'E-Guide',
+          icon: BookOpen,
+          iconColor: 'text-red-500',
+          bgColor: 'bg-red-50 dark:bg-red-900/20',
+          borderColor: 'border-red-200 dark:border-red-800',
+          items: [] // Empty - E-Guide content is handled separately
         };
       
       default:
@@ -792,6 +804,12 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
   if (resourceType === 'feedback') {
     console.log('ResourcePages: Rendering FeedbackPage for resourceType:', resourceType);
     return <FeedbackPage onGoBack={onGoBack} canGoBack={canGoBack} />;
+  }
+
+  // Handle E-Guide page separately
+  if (resourceType === 'eguide') {
+    console.log('ResourcePages: Rendering EguideViewer for resourceType:', resourceType);
+    return <EguideViewer />;
   }
 
   return (

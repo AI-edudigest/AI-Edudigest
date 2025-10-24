@@ -28,30 +28,77 @@ const EguideViewer: React.FC = () => {
       const { db } = await import('../../utils/firebase');
       const { collection, getDocs, query, where, orderBy } = await import('firebase/firestore');
       
-      const q = query(
-        collection(db, 'eguideContent'),
-        where('active', '==', true),
-        orderBy('createdAt', 'desc')
-      );
+      console.log('🔍 Loading E-Guide content...');
       
-      const querySnapshot = await getDocs(q);
-      const items: EguideContent[] = [];
-      
-      querySnapshot.forEach((doc) => {
-        items.push({
-          id: doc.id,
-          ...doc.data()
-        } as EguideContent);
-      });
-      
-      setContentItems(items);
-      
-      // Auto-select first PDF if available
-      if (items.length > 0 && items[0].pdfUrl) {
-        setSelectedPdf(items[0].pdfUrl);
+      // First try with the composite index query
+      try {
+        const q = query(
+          collection(db, 'eguideContent'),
+          where('active', '==', true),
+          orderBy('createdAt', 'desc')
+        );
+        
+        const querySnapshot = await getDocs(q);
+        const items: EguideContent[] = [];
+        
+        querySnapshot.forEach((doc) => {
+          items.push({
+            id: doc.id,
+            ...doc.data()
+          } as EguideContent);
+        });
+        
+        console.log('✅ Loaded E-Guide content with index:', items.length, 'items');
+        setContentItems(items);
+        
+        // Auto-select first PDF if available
+        if (items.length > 0 && items[0].pdfUrl) {
+          setSelectedPdf(items[0].pdfUrl);
+        }
+      } catch (indexError) {
+        console.warn('⚠️ Index query failed, trying simple query:', indexError);
+        
+        // Fallback to simple query without orderBy
+        const simpleQuery = query(
+          collection(db, 'eguideContent'),
+          where('active', '==', true)
+        );
+        
+        const querySnapshot = await getDocs(simpleQuery);
+        const items: EguideContent[] = [];
+        
+        querySnapshot.forEach((doc) => {
+          items.push({
+            id: doc.id,
+            ...doc.data()
+          } as EguideContent);
+        });
+        
+        // Sort manually
+        items.sort((a, b) => {
+          const dateA = new Date(a.createdAt).getTime();
+          const dateB = new Date(b.createdAt).getTime();
+          return dateB - dateA; // Descending order
+        });
+        
+        console.log('✅ Loaded E-Guide content with fallback:', items.length, 'items');
+        setContentItems(items);
+        
+        // Auto-select first PDF if available
+        if (items.length > 0 && items[0].pdfUrl) {
+          setSelectedPdf(items[0].pdfUrl);
+        }
       }
     } catch (error) {
-      console.error('Error loading E-Guide content:', error);
+      console.error('❌ Error loading E-Guide content:', error);
+      // Show user-friendly error message
+      if (error instanceof Error) {
+        if (error.message.includes('permission')) {
+          console.error('Permission denied: User may not be authenticated or may not have access to E-Guide content');
+        } else if (error.message.includes('index')) {
+          console.error('Firestore index required: Please create a composite index for eguideContent collection');
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -232,6 +279,9 @@ const EguideViewer: React.FC = () => {
                       src={selectedPdf}
                       className="w-full h-[600px] border-0"
                       title="E-Guide PDF Viewer"
+                      onError={(e) => {
+                        console.error('Error loading PDF:', e);
+                      }}
                     />
                   </div>
                 </div>

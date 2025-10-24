@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, FileText, Megaphone, Settings, Plus, Edit, Trash2, Eye, Database, BookOpen, Calendar } from 'lucide-react';
+import { Users, FileText, Megaphone, Settings, Plus, Edit, Trash2, Eye, Database, BookOpen, Calendar, Newspaper } from 'lucide-react';
 import { getAllUsers, getArticles, getSponsors } from '../../utils/firebase';
 import { addSampleArticles, addSampleSponsors } from '../../utils/sampleData';
 import { seedResourceTabs } from '../../utils/seedResourceTabs';
@@ -125,6 +125,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       icon: Database,
       color: 'bg-indigo-500',
       onClick: () => onNavigate('sidebarTabs')
+    },
+    {
+      title: 'Latest Updates',
+      description: 'Manage news updates and AI tools',
+      icon: Newspaper,
+      color: 'bg-orange-500',
+      onClick: () => onNavigate('news')
     },
     {
       title: 'Manage Users',

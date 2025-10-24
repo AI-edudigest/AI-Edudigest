@@ -464,7 +464,7 @@ function App() {
               <div className="hidden xl:block w-80 flex-shrink-0 fixed right-0 top-24 h-[calc(100vh-6rem)] z-30">
                 <RightSidebar 
                   onResourceClick={handleResourceClick} 
-                  onMagazineClick={() => setActiveSection('eMagazine')}
+                  onMagazineClick={() => handleResourceClick('eguide')}
                 />
               </div>
             )}

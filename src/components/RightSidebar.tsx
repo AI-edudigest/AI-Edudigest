@@ -21,9 +21,10 @@ import {
   Award,
   BarChart3,
   Shield,
-  MessageSquare
+  MessageSquare,
+  Newspaper
 } from 'lucide-react';
-import { getResourceTabs } from '../utils/firebase';
+import { getResourceTabs, subscribeToNewsUpdates } from '../utils/firebase';
 
 interface RightSidebarProps {
   onResourceClick: (resource: string) => void;
@@ -37,6 +38,8 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ onResourceClick, onMagazine
   const [currentSlide, setCurrentSlide] = useState(0);
   const [dynamicResources, setDynamicResources] = useState<any[]>([]);
   const [loadingResources, setLoadingResources] = useState(true);
+  const [newsUpdates, setNewsUpdates] = useState<any[]>([]);
+  const [loadingNews, setLoadingNews] = useState(true);
 
   // Fetch dynamic resource tabs from Firebase
   useEffect(() => {
@@ -68,6 +71,8 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ onResourceClick, onMagazine
               resourceType = 'promptTemplates';
             } else if (tabName.includes('feedback') || tabName.includes('recommendation')) {
               resourceType = 'feedback';
+            } else if (tabName.includes('e-guide') || tabName.includes('eguide')) {
+              resourceType = 'eguide';
             }
             
             return {
@@ -108,50 +113,22 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ onResourceClick, onMagazine
     fetchResourceTabs();
   }, []);
 
-  const aiModels = [
-    {
-      name: 'ChatGPT-4',
-      description: 'Advanced conversational AI with multimodal capabilities',
-      provider: 'OpenAI',
-      type: 'GPT',
-      link: 'https://chat.openai.com'
-    },
-    {
-      name: 'Claude 3 Sonnet',
-      description: 'High-performance AI assistant for complex tasks',
-      provider: 'Anthropic',
-      type: 'Claude',
-      link: 'https://claude.ai'
-    },
-    {
-      name: 'Gemini Pro',
-      description: 'Google\'s most capable AI model for complex reasoning',
-      provider: 'Google',
-      type: 'Gemini',
-      link: 'https://gemini.google.com'
-    },
-    {
-      name: 'Perplexity AI',
-      description: 'AI-powered search engine with real-time answers',
-      provider: 'Perplexity',
-      type: 'Search AI',
-      link: 'https://perplexity.ai'
-    },
-    {
-      name: 'DeepSeek',
-      description: 'Advanced AI model for coding and technical tasks',
-      provider: 'DeepSeek',
-      type: 'Code AI',
-      link: 'https://chat.deepseek.com'
-    }
-  ];
+  // Subscribe to news updates
+  useEffect(() => {
+    const unsubscribe = subscribeToNewsUpdates((updates) => {
+      setNewsUpdates(updates);
+      setLoadingNews(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const filteredResources = dynamicResources.filter(resource =>
     resource.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Duplicate models for infinite scroll
-  const duplicatedModels = [...aiModels, ...aiModels];
+  // Duplicate news updates for infinite scroll
+  const duplicatedNews = [...newsUpdates, ...newsUpdates];
 
   // Magazine slides data
   const magazineSlides = [
@@ -217,42 +194,70 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ onResourceClick, onMagazine
           />
         </div>
 
-        {/* Top LLMs */}
+        {/* Latest Updates */}
         <div 
           className="bg-gradient-to-br from-gray-900 to-gray-800 dark:from-gray-800 dark:to-gray-900 rounded-lg p-4 text-white shadow-lg border border-gray-700 dark:border-gray-600"
           onMouseEnter={() => setIsPaused(true)}
           onMouseLeave={() => setIsPaused(false)}
         >
           <div className="flex items-center space-x-3 mb-4">
-            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
-              <Brain className="w-5 h-5 text-white" />
+            <div className="p-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg">
+              <Newspaper className="w-5 h-5 text-white" />
             </div>
-            <h4 className="font-semibold text-lg">Top LLMs</h4>
+            <h4 className="font-semibold text-lg">Latest Updates</h4>
           </div>
           <div 
             ref={scrollContainerRef}
             className="overflow-hidden"
             style={{ height: '280px' }}
           >
-            <div className="space-y-4">
-              {duplicatedModels.map((model, index) => (
-                <a 
-                  key={index} 
-                  href={model.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block border-t border-gray-700 dark:border-gray-600 pt-3 first:border-t-0 first:pt-0 hover:bg-gray-800 dark:hover:bg-gray-700 rounded-lg p-2 -mx-2 transition-all duration-200 cursor-pointer"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <h5 className="font-medium mb-1 hover:text-[#9b0101] transition-colors">{model.name}</h5>
-                  <p className="text-sm text-gray-300 dark:text-gray-400 mb-2">{model.description}</p>
-                  <div className="flex space-x-2">
-                    <span className="px-2 py-1 bg-gray-700 dark:bg-gray-600 text-xs rounded">{model.provider}</span>
-                    <span className="px-2 py-1 bg-gray-700 dark:bg-gray-600 text-xs rounded">{model.type}</span>
+            {loadingNews ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+              </div>
+            ) : duplicatedNews.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                <div className="text-center">
+                  <Newspaper className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No updates available</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {duplicatedNews.map((update, index) => (
+                  <div 
+                    key={`${update.id}-${index}`}
+                    className="block border-t border-gray-700 dark:border-gray-600 pt-3 first:border-t-0 first:pt-0 hover:bg-gray-800 dark:hover:bg-gray-700 rounded-lg p-2 -mx-2 transition-all duration-200 cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-2 mb-1">
+                      {update.type === 'news' ? (
+                        <Newspaper className="w-4 h-4 text-blue-400" />
+                      ) : (
+                        <Zap className="w-4 h-4 text-purple-400" />
+                      )}
+                      <h5 className="font-medium hover:text-[#9b0101] transition-colors">{update.title}</h5>
+                    </div>
+                    <p className="text-sm text-gray-300 dark:text-gray-400 mb-2">{update.description}</p>
+                    <div className="flex space-x-2">
+                      <span className="px-2 py-1 bg-gray-700 dark:bg-gray-600 text-xs rounded">
+                        {update.type === 'news' ? 'News' : 'AI Tool'}
+                      </span>
+                      {update.link && (
+                        <a
+                          href={update.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-1 bg-[#9b0101] text-white text-xs rounded hover:bg-red-600 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          View
+                        </a>
+                      )}
+                    </div>
                   </div>
-                </a>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

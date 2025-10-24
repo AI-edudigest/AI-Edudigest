@@ -134,6 +134,14 @@ export const seedDefaultSidebarTabs = async () => {
       section: 'learningDocs',
       order: 15,
       active: true
+    },
+    {
+      name: 'e-guide',
+      label: 'E-Guide',
+      icon: 'BookOpen',
+      section: 'eguide',
+      order: 16,
+      active: true
     }
   ];
 

@@ -125,17 +125,6 @@ const SidebarTabContent: React.FC<SidebarTabContentProps> = ({
             )}
           </div>
           
-          {/* TTS Button for Header */}
-          {(tab.headingText || tab.topicName || tab.label) && (
-            <ArticleTTS
-              articleText={`${tab.headingText || tab.topicName || tab.label}${tab.subTopic ? '. ' + tab.subTopic : ''}${tab.topicName && tab.topicName !== tab.headingText ? '. ' + tab.topicName : ''}`.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}
-              articleTitle={tab.headingText || tab.topicName || tab.label || 'Content'}
-              articleId={`sidebar-tab-header-${tabId}`}
-              isActive={playingArticleId === `sidebar-tab-header-${tabId}`}
-              onPlayStateChange={handleTTSPlayStateChange}
-              className="absolute top-0 right-0"
-            />
-          )}
         </div>
       </div>
 
