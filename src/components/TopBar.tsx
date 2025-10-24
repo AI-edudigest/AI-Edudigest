@@ -264,7 +264,7 @@ const TopBar: React.FC<TopBarProps> = ({ isDarkMode, setIsDarkMode, onLogout, pa
 
         <div className="flex items-center space-x-4">
           <div className="relative z-50">
-            <Search className="w-4 h-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+            <Search className="w-3 h-3 absolute left-1.5 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
             <input 
               type="text" 
               placeholder="Search..." 
@@ -272,7 +272,7 @@ const TopBar: React.FC<TopBarProps> = ({ isDarkMode, setIsDarkMode, onLogout, pa
               onChange={handleSearch}
               onKeyDown={handleSearchSubmit}
               onFocus={handleSearchFocus}
-              className="pl-8 pr-3 py-1.5 w-64 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-[#9b0101] bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors duration-200"
+              className="pl-6 pr-2 py-1 w-48 text-xs border border-gray-300 dark:border-gray-600 rounded-md focus:ring-1 focus:ring-[#9b0101] focus:border-[#9b0101] bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors duration-200"
             />
           </div>
           
