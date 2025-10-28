@@ -259,7 +259,7 @@ const TopBar: React.FC<TopBarProps> = ({ isDarkMode, setIsDarkMode, onLogout, pa
         
         {/* Ads Carousel Section */}
         <div className="flex-1 flex justify-center px-4">
-          <AdsCarousel />
+          <AdsCarousel institutionName={userProfile?.institution} />
         </div>
 
         <div className="flex items-center space-x-4">

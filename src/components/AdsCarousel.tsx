@@ -9,7 +9,11 @@ interface Ad {
   active: boolean;
 }
 
-const AdsCarousel: React.FC = () => {
+interface AdsCarouselProps {
+  institutionName?: string;
+}
+
+const AdsCarousel: React.FC<AdsCarouselProps> = ({ institutionName }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
