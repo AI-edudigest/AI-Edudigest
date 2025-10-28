@@ -92,33 +92,25 @@ const AdsCarousel: React.FC = () => {
   }
 
   if (ads.length === 0) {
-    console.log('❌ AdsCarousel: No ads to display, showing test data');
-    // Show test data for debugging
-    const testAds = [{
-      id: 'test-1',
-      title: 'Test Ad',
-      imageUrl: 'https://via.placeholder.com/150x100/9b0101/ffffff?text=Test+Ad',
-      linkUrl: 'https://example.com',
-      active: true
-    }];
+    console.log('❌ AdsCarousel: No ads to display, showing institution name');
+    
+    // Use institution name from props or fallback
+    const displayName = institutionName || 'AI for Educational Institutions';
     
     return (
       <div className="relative h-20 w-64 mx-auto overflow-hidden">
         <div className="relative h-full w-full">
           <div className="relative w-full h-full transition-all duration-1000 ease-in-out transform-gpu">
-            <div className="flex-shrink-0 w-full h-full cursor-pointer">
-              <div className="h-full w-full rounded-lg shadow-lg overflow-hidden bg-gradient-to-r from-blue-50 to-indigo-50 border border-gray-200 hover:shadow-xl transition-all duration-300">
-                <img
-                  src={testAds[0].imageUrl}
-                  alt={testAds[0].title}
-                  className="w-full h-full object-cover"
-                />
+            <div className="flex-shrink-0 w-full h-full">
+              <div className="h-full w-full rounded-lg shadow-lg overflow-hidden bg-gradient-to-r from-[#9b0101] to-[#7a0101] border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 flex items-center justify-center">
+                <div className="text-center px-4">
+                  <h3 className="text-white font-bold text-sm leading-tight">
+                    {displayName}
+                  </h3>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <div className="flex justify-center space-x-1 mt-2">
-          <div className="w-2 h-2 rounded-full bg-blue-600 scale-125"></div>
         </div>
       </div>
     );
