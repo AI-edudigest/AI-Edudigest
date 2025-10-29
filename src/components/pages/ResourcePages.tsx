@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Zap, Calendar, Book, Lightbulb, GraduationCap, ExternalLink, Clock, MapPin, Star, Download, ChevronLeft, Check, Plus, X, Trash2, BookOpen } from 'lucide-react';
 import { BackButtonProps } from '../../types/common';
-import { getResourceContent as getFirebaseResourceContent, getAITools, getResourceTabs, getResourceTabContent, addEvent, deleteEvent, getEvents, subscribeToEvents } from '../../utils/firebase';
+import { getResourceTabs, getResourceTabContent, addEvent, deleteEvent, subscribeToEvents } from '../../utils/firebase';
 import FeedbackPage from './FeedbackPage';
 import EguideViewer from './EguideViewer';
 
@@ -215,7 +215,7 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
         
         // Find the tab that matches the current resource type
         const matchingTab = tabs.find(tab => {
-          const tabName = tab.name.toLowerCase();
+          const tabName = (tab as any).name?.toLowerCase() || '';
           if (resourceType === 'aiTools') return tabName.includes('ai tools') || tabName.includes('tools');
           if (resourceType === 'recommendedBooks') return tabName.includes('books') || tabName.includes('recommended');
           if (resourceType === 'freeCourses') return tabName.includes('courses') || tabName.includes('free');
@@ -224,11 +224,11 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
         });
         
         console.log('🔍 Looking for tab matching resourceType:', resourceType);
-        console.log('🔍 Available tabs:', tabs.map(t => ({ name: t.name, id: t.id })));
+        console.log('🔍 Available tabs:', tabs.map(t => ({ name: (t as any).name, id: t.id })));
         console.log('🔍 Found matching tab:', matchingTab);
         
         if (matchingTab) {
-          console.log('✅ Found matching tab:', matchingTab.name);
+          console.log('✅ Found matching tab:', (matchingTab as any).name);
           // Fetch content for other resource types
           const { contents, error: contentError } = await getResourceTabContent(matchingTab.id);
           if (contentError) {
@@ -238,7 +238,56 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
             console.log('✅ Loaded content items:', contents.length);
             // Filter only active content
             const activeContents = contents.filter((content: any) => content.active);
+            
+            // Special handling for prompt templates - organize by categories
+            if (resourceType === 'promptTemplates') {
+              console.log('🎯 PROMPT TEMPLATES LOADING DEBUG:');
+              console.log('🎯 Active contents:', activeContents);
+              console.log('🎯 Contents length:', activeContents.length);
+              
+              // Define available categories with their metadata
+              const categoryConfig: { [key: string]: { description: string; icon: string; color: string } } = {
+                'Leaders': {
+                  description: 'For College Principals, Directors, and Management',
+                  icon: '👔',
+                  color: 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400'
+                },
+                'Administration': {
+                  description: 'For College Administrative Staff, Office Personnel, and Clerks',
+                  icon: '📋',
+                  color: 'bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400'
+                },
+                'Educators': {
+                  description: 'For College Professors, Lecturers, and Teaching Faculty',
+                  icon: '🎓',
+                  color: 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                }
+              };
+              
+              // Organize templates by category
+              const organizedTemplates = Object.keys(categoryConfig).map(categoryName => {
+                const categoryTemplates = activeContents.filter((template: any) => template.category === categoryName);
+                console.log(`🎯 Category ${categoryName}:`, categoryTemplates.length, 'templates');
+                
+                return {
+                  name: categoryName,
+                  description: categoryConfig[categoryName].description,
+                  icon: categoryConfig[categoryName].icon,
+                  color: categoryConfig[categoryName].color,
+                  templates: categoryTemplates.map((template: any) => ({
+                    name: template.name,
+                    description: template.description,
+                    template: template.template
+                  }))
+                };
+              }).filter(category => category.templates.length > 0);
+              
+              console.log('🎯 Organized templates:', organizedTemplates);
+              console.log('🎯 Setting dynamicItems to:', organizedTemplates);
+              setDynamicItems(organizedTemplates);
+            } else {
             setDynamicItems(activeContents);
+            }
           }
         } else {
           console.log('❌ No matching tab found for:', resourceType);
@@ -263,17 +312,6 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
     };
   }, [resourceType]);
 
-  const getCollectionName = (type: string) => {
-    switch (type) {
-      case 'aiTools': return 'aiTools';
-      case 'upcomingEvents': return 'upcomingEvents';
-      case 'recommendedBooks': return 'recommendedBooks';
-      case 'promptTemplates': return 'promptTemplates';
-      case 'freeCourses': return 'freeCourses';
-      case 'eguide': return 'eguideContent';
-      default: return null;
-    }
-  };
 
   const getResourceContent = (type: string) => {
     switch (type) {
@@ -314,177 +352,7 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
           iconColor: 'text-orange-500',
           bgColor: 'bg-orange-50 dark:bg-orange-900/20',
           borderColor: 'border-orange-200 dark:border-orange-800',
-          categories: [
-            {
-              name: 'Leaders',
-              description: 'For College Principals, Directors, and Management',
-              icon: '👔',
-              color: 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400',
-              templates: [
-                {
-                  name: 'College Strategic Vision Planner',
-                  description: 'Create a comprehensive 5-year strategic plan for college improvement focusing on academics, infrastructure, and student success',
-                  template: 'Create a detailed 5-year strategic plan for our college focusing on academic excellence, infrastructure development, faculty enhancement, and student success. Include specific goals, timelines, and resource requirements.'
-                },
-                {
-                  name: 'Convocation Speech Writer',
-                  description: 'Write inspiring speeches for college convocation ceremonies and graduation events',
-                  template: 'Write an inspiring convocation speech for college students emphasizing the importance of continuous learning, career readiness, and contributing to society. Make it motivational and relevant to today\'s job market.'
-                },
-                {
-                  name: 'Faculty Meeting Minutes Generator',
-                  description: 'Summarize faculty meetings and create actionable follow-up plans',
-                  template: 'Summarize our faculty meeting discussion about improving student attendance and academic performance. Create a clear action plan with responsibilities and deadlines for each department.'
-                },
-                {
-                  name: 'College Event Planning Assistant',
-                  description: 'Plan major college events like annual day, tech fests, and cultural programs',
-                  template: 'Help plan our college annual tech fest including event schedule, budget allocation, vendor coordination, and student engagement activities. Include logistics and marketing strategies.'
-                },
-                {
-                  name: 'Academic Policy Decision Tool',
-                  description: 'Compare different academic approaches and make informed decisions',
-                  template: 'Compare the benefits and challenges of implementing blended learning vs traditional classroom teaching in our college. Provide a recommendation based on student needs, faculty readiness, and infrastructure requirements.'
-                },
-                {
-                  name: 'Stakeholder Communication Generator',
-                  description: 'Create professional communications for parents, alumni, and industry partners',
-                  template: 'Write a professional email to college alumni requesting their participation in our mentorship program for current students. Include program benefits and how they can contribute.'
-                },
-                {
-                  name: 'College Leadership Time Management',
-                  description: 'Create efficient schedules for college leadership responsibilities',
-                  template: 'Create a weekly schedule for college principal including faculty meetings, student interactions, administrative tasks, and strategic planning. Ensure balance between leadership duties and personal time.'
-                },
-                {
-                  name: 'Academic Policy Framework',
-                  description: 'Draft comprehensive academic policies for college operations',
-                  template: 'Draft a comprehensive academic integrity policy for our college covering plagiarism prevention, examination conduct, and research ethics. Make it clear and enforceable for both students and faculty.'
-                },
-                {
-                  name: 'College Performance Report Builder',
-                  description: 'Create detailed reports on college performance metrics and achievements',
-                  template: 'Create a comprehensive monthly college performance report including student enrollment, academic results, faculty achievements, placement statistics, and infrastructure developments for board presentation.'
-                }
-              ]
-            },
-            {
-              name: 'Admin Staff',
-              description: 'For College Administrative Staff, Office Personnel, and Clerks',
-              icon: '📋',
-              color: 'bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400',
-              templates: [
-                {
-                  name: 'Vendor Communication Manager',
-                  description: 'Create professional communications with suppliers and service providers',
-                  template: 'Write a formal email to IT equipment vendors requesting quotations for 50 desktop computers, 10 laptops, and networking equipment for our college computer lab upgrade project.'
-                },
-                {
-                  name: 'Fee Collection Reminder System',
-                  description: 'Generate automated reminders for college fee payments and dues',
-                  template: 'Create a series of SMS reminders for college students about pending semester fees, including payment deadlines, online payment options, and consequences of late payment.'
-                },
-                {
-                  name: 'Student Database Management',
-                  description: 'Organize and structure student information for efficient record keeping',
-                  template: 'Design a comprehensive student database structure including personal details, academic records, fee payments, attendance, and contact information for efficient college administration.'
-                },
-                {
-                  name: 'College Notice Generator',
-                  description: 'Draft official college notices and circulars for various announcements',
-                  template: 'Draft an official college notice announcing the mid-semester break, examination schedule, and important dates for the upcoming academic session.'
-                },
-                {
-                  name: 'Procurement Meeting Recorder',
-                  description: 'Document supplier meetings and procurement decisions',
-                  template: 'Summarize our procurement committee meeting discussing the purchase of laboratory equipment, including supplier presentations, cost comparisons, and final recommendations.'
-                },
-                {
-                  name: 'Financial Management Helper',
-                  description: 'Create Excel formulas and templates for college financial tracking',
-                  template: 'Create Excel formulas to calculate total monthly revenue from different sources (tuition fees, government grants, donations) and generate expense reports for college financial management.'
-                },
-                {
-                  name: 'Multilingual Document Translator',
-                  description: 'Translate college documents and notices for diverse student populations',
-                  template: 'Translate our college admission notice from English to Hindi, ensuring it\'s clear and accessible for students from different linguistic backgrounds.'
-                },
-                {
-                  name: 'Student Services Procedure Guide',
-                  description: 'Create step-by-step guides for student service requests',
-                  template: 'Create a comprehensive guide for students on how to apply for transfer certificates, migration certificates, and other official documents from the college administration.'
-                },
-                {
-                  name: 'Monthly Operations Report',
-                  description: 'Generate regular reports on college administrative activities',
-                  template: 'Create a monthly administrative report template covering admissions processed, fees collected, student services provided, and pending tasks for college management review.'
-                },
-                {
-                  name: 'Daily Administrative Checklist',
-                  description: 'Create systematic checklists for daily administrative tasks',
-                  template: 'Create a comprehensive daily checklist for college administrative staff covering student inquiries, document processing, fee collection, and coordination with different departments.'
-                }
-              ]
-            },
-            {
-              name: 'Educators',
-              description: 'For College Professors, Lecturers, and Teaching Faculty',
-              icon: '🎓',
-              color: 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400',
-              templates: [
-                {
-                  name: 'Advanced Lesson Planning System',
-                  description: 'Create comprehensive lesson plans for college-level courses',
-                  template: 'Create a detailed 90-minute lesson plan for teaching [Advanced Topic] to final year college students, including learning objectives, interactive activities, assessment methods, and real-world applications.'
-                },
-                {
-                  name: 'College-Level Assessment Creator',
-                  description: 'Generate sophisticated quizzes and exams for college students',
-                  template: 'Design a comprehensive assessment for [Subject] covering theoretical concepts, practical applications, and critical thinking questions suitable for college-level students.'
-                },
-                {
-                  name: 'Complex Topic Simplifier',
-                  description: 'Break down advanced academic concepts for better student understanding',
-                  template: 'Explain [Advanced Academic Concept] in clear, accessible language that college students can understand, using analogies and real-world examples to illustrate complex ideas.'
-                },
-                {
-                  name: 'Academic Doubt Resolution System',
-                  description: 'Address common student questions and academic challenges',
-                  template: 'List the most common questions college students ask about [Subject Area] and provide detailed, accurate answers that help them understand the concepts better.'
-                },
-                {
-                  name: 'Project-Based Learning Designer',
-                  description: 'Create engaging project assignments for college students',
-                  template: 'Design three comprehensive project assignments for [Subject] that challenge college students to apply theoretical knowledge to real-world problems and develop critical thinking skills.'
-                },
-                {
-                  name: 'Collaborative Learning Activities',
-                  description: 'Plan group activities that enhance college student collaboration',
-                  template: 'Create five collaborative learning activities for college students that promote teamwork, peer learning, and knowledge sharing in [Subject Area].'
-                },
-                {
-                  name: 'Academic Feedback Generator',
-                  description: 'Provide constructive feedback on student assignments and projects',
-                  template: 'Write detailed feedback for a college student\'s research project, highlighting strengths in analysis and methodology while suggesting specific improvements for academic writing and research depth.'
-                },
-                {
-                  name: 'Professional Presentation Builder',
-                  description: 'Create presentation outlines for academic and professional contexts',
-                  template: 'Create a comprehensive presentation outline for college students presenting their research findings, including introduction, methodology, results, discussion, and conclusions with time allocations.'
-                },
-                {
-                  name: 'Academic Communication Tool',
-                  description: 'Draft communications with students and academic stakeholders',
-                  template: 'Write a professional email to college students about upcoming academic deadlines, examination schedules, and important announcements while maintaining an encouraging and supportive tone.'
-                },
-                {
-                  name: 'Research Integration Assistant',
-                  description: 'Incorporate latest research findings into college curriculum',
-                  template: 'Summarize the latest research developments in [Field] and suggest how to integrate these findings into our college curriculum to keep students updated with current industry trends.'
-                }
-              ]
-            }
-          ]
+          categories: [] // Empty - Templates are now loaded dynamically
         };
       
       case 'freeCourses':
@@ -523,15 +391,14 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
   const Icon = content.icon;
 
   // For prompt templates, use categories structure
-  let displayItems, displayCategories;
+  let displayItems: any[], displayCategories: any[];
   if (resourceType === 'promptTemplates') {
-    // For prompt templates, we'll show only hardcoded categories for now
-    // In the future, we can enhance this to support dynamic categories
-    displayCategories = content.categories || [];
+    // For prompt templates, use dynamic items (organized by categories)
+    displayCategories = dynamicItems || [];
     displayItems = [];
   } else {
     // For other resource types, combine dynamic items with hardcoded items
-    displayItems = [...dynamicItems, ...content.items];
+    displayItems = [...(dynamicItems || []), ...(content.items || [])];
     displayCategories = [];
   }
 
@@ -544,8 +411,18 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
     console.log('🔄 loading:', loading);
   }
   
+  // Debug logging for prompt templates
+  if (resourceType === 'promptTemplates') {
+    console.log('🎯 PROMPT TEMPLATES DISPLAY DEBUG:');
+    console.log('📊 dynamicItems:', dynamicItems);
+    console.log('📋 displayCategories:', displayCategories);
+    console.log('🔄 loading:', loading);
+  }
+  
 
   const renderItem = (item: any, index: number) => {
+    console.log(`🎯 Rendering item ${index}:`, item);
+    
     switch (resourceType) {
       case 'aiTools':
         return (
@@ -694,11 +571,12 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
                 <p className="text-sm text-gray-600 dark:text-gray-400">{item.description}</p>
               </div>
               <span className={`px-3 py-1 text-sm rounded-full ${item.color}`}>
-                {item.templates.length} Templates
+                {item.templates?.length || 0} Templates
               </span>
             </div>
             <div className="space-y-3">
-              {item.templates.map((template, templateIndex) => (
+              {item.templates && item.templates.length > 0 ? (
+                item.templates.map((template: any, templateIndex: number) => (
                 <div key={templateIndex} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-semibold text-gray-900 dark:text-white text-sm">{template.name}</h4>
@@ -724,7 +602,12 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
                     )}
                   </button>
                 </div>
-              ))}
+                ))
+              ) : (
+                <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                  No templates available for this category
+                </div>
+              )}
             </div>
           </div>
         );

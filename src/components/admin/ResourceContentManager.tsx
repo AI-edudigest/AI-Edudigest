@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Save, X, Calendar, Clock, MapPin, ExternalLink } from 'lucide-react';
 import { getResourceContent as getFirebaseResourceContent, createResourceContent, updateResourceContent, deleteResourceContent, createNotification } from '../../utils/firebase';
+import PromptTemplatesManager from './PromptTemplatesManager';
 
 interface ResourceItem {
   id?: string;
@@ -387,35 +388,7 @@ const ResourceContentManager: React.FC<ResourceContentManagerProps> = ({ resourc
 
   // Show special message for prompt templates
   if (config.isSpecial && resourceType === 'promptTemplates') {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{config.title}</h2>
-        </div>
-        
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
-          <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-yellow-100 dark:bg-yellow-900/40 rounded-full flex items-center justify-center">
-                <span className="text-yellow-600 dark:text-yellow-400 text-lg">💡</span>
-              </div>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
-                Prompt Templates Coming Soon
-              </h3>
-              <p className="text-yellow-700 dark:text-yellow-300 mb-4">
-                Prompt Templates currently use a special category-based structure. For now, the templates are managed through the hardcoded content. 
-                We're working on making them fully editable through the admin panel.
-              </p>
-              <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                The current prompt templates include categories for Leaders, Admin Staff, and Educators with ready-to-use templates for various AI tasks.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <PromptTemplatesManager />;
   }
 
   return (
