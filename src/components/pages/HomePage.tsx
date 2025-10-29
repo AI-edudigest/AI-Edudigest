@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Layers, Zap, BookOpen, Users, X, Plus } from 'lucide-react';
 import { BackButtonProps } from '../../types/common';
-import { getArticles, getSponsors } from '../../utils/firebase';
+import { getSponsors, subscribeToArticles } from '../../utils/firebase';
 import SponsorsCarousel from '../SponsorsCarousel';
 import ArticleTTS from '../common/ArticleTTS';
 
@@ -28,40 +28,55 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPa
   ];
 
 
-  // Fetch data from Firebase
+  // Fetch data from Firebase with real-time updates
   useEffect(() => {
-    const fetchData = async () => {
+    let unsubscribe: (() => void) | null = null;
+
+    const setupData = async () => {
       try {
-        const [articlesResult, sponsorsResult] = await Promise.all([
-          getArticles(),
-          getSponsors()
-        ]);
+        setLoading(true);
         
-        if (articlesResult.articles) {
-          setArticles(articlesResult.articles.filter((article: any) => article.published));
-        }
+        // Setup real-time subscription for articles (only published articles)
+        unsubscribe = subscribeToArticles((articles) => {
+          console.log('✅ Real-time articles update received:', articles.length, 'articles');
+          setArticles(articles);
+          setLoading(false);
+        });
         
-        if (sponsorsResult.sponsors) {
-          const activeSponsors = sponsorsResult.sponsors
-            .filter((sponsor: any) => sponsor.active)
-            .map((sponsor: any) => ({
-              name: sponsor.name,
-              logo: sponsor.logo,
-              link: sponsor.website
-            }));
-          setSponsors(activeSponsors);
-        } else {
+        // Fetch sponsors (one-time load)
+        try {
+          const sponsorsResult = await getSponsors();
+          if (sponsorsResult.sponsors) {
+            const activeSponsors = sponsorsResult.sponsors
+              .filter((sponsor: any) => sponsor.active)
+              .map((sponsor: any) => ({
+                name: sponsor.name,
+                logo: sponsor.logo,
+                link: sponsor.website
+              }));
+            setSponsors(activeSponsors);
+          } else {
+            setSponsors([]);
+          }
+        } catch (sponsorError) {
+          console.error('Error fetching sponsors:', sponsorError);
           setSponsors([]);
         }
       } catch (error) {
-        console.error('Error fetching data:', error);
-        setSponsors([]);
-      } finally {
+        console.error('Error setting up data:', error);
         setLoading(false);
       }
     };
 
-    fetchData();
+    setupData();
+
+    // Cleanup function
+    return () => {
+      if (unsubscribe) {
+        console.log('🔄 Cleaning up articles subscription');
+        unsubscribe();
+      }
+    };
   }, []);
 
 
@@ -181,7 +196,7 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPa
                 {/* TTS Button - Top Right Corner */}
                 <div className="absolute top-4 right-4 z-10">
                   <ArticleTTS
-                    articleText={article.excerpt}
+                    articleText={article.excerpt || article.content?.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() || ''}
                     articleTitle={article.title}
                     articleId={article.id}
                     isActive={playingArticleId === article.id}
@@ -195,9 +210,11 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPa
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
                       {article.title}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-                      {article.excerpt}
-                    </p>
+                    {(article.excerpt || article.content) && (
+                      <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+                        {article.excerpt || (article.content ? article.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').substring(0, 150) + '...' : '')}
+                      </p>
+                    )}
                     <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                       <span className="font-medium">By {article.author}</span>
                       <span>
@@ -283,7 +300,7 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPa
               <div className="flex items-center space-x-3">
                 {/* TTS Button for Modal */}
                 <ArticleTTS
-                  articleText={selectedArticle.content}
+                  articleText={selectedArticle.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}
                   articleTitle={selectedArticle.title}
                   articleId={`modal-${selectedArticle.id}`}
                   isActive={playingArticleId === `modal-${selectedArticle.id}`}
@@ -301,10 +318,12 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPa
 
             {/* Modal Content */}
             <div className="p-6">
-              <div className="prose prose-lg max-w-none dark:prose-invert">
-                <div className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                  {selectedArticle.content}
-                </div>
+              <div className="prose prose-lg max-w-none">
+                <div 
+                  className="leading-relaxed"
+                  style={{ color: '#000000' }}
+                  dangerouslySetInnerHTML={{ __html: selectedArticle.content }}
+                />
               </div>
             </div>
           </div>

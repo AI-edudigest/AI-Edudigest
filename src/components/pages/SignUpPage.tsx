@@ -287,8 +287,8 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onBackToLogin 
           <div className="text-center mb-8 animate-in slide-in-from-top-10 duration-700 delay-200">
             <div className="flex items-center justify-center mb-4">
               <img 
-                src="/AI-Edu_Digest__logo_-removebg-preview.png" 
-                alt="AI-EduDigest Logo" 
+                src="/AI-Edu app logo  .png" 
+                alt="AI-EduApp Logo" 
                 className="w-24 h-24 animate-in zoom-in-50 duration-700 delay-300"
               />
             </div>

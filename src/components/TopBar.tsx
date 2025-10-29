@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, Sun, Moon, LogOut, X, Home, BookOpen, Lightbulb, Shield, Users, BarChart3, Megaphone, DollarSign, Target, Award, TrendingUp, Globe, Sparkles, FileText, Settings, User as UserIcon, Mail, Building2, Briefcase } from 'lucide-react';
+import { Search, Bell, LogOut, X, Home, BookOpen, Lightbulb, Shield, Users, BarChart3, Megaphone, DollarSign, Target, Award, TrendingUp, Globe, Sparkles, FileText, Settings, User as UserIcon, Mail, Building2, Briefcase } from 'lucide-react';
 import { getNotifications, getUnreadNotificationCount, markNotificationAsRead, getCurrentUser, getUserProfile } from '../utils/firebase';
 import { useSearch } from '../contexts/SearchContext';
 import AdsCarousel from './AdsCarousel';
@@ -22,8 +22,6 @@ interface Notification {
 }
 
 interface TopBarProps {
-  isDarkMode: boolean;
-  setIsDarkMode: (darkMode: boolean) => void;
   activeSection: string;
   onLogout?: () => void;
   pageInfo?: PageInfo | null;
@@ -32,7 +30,7 @@ interface TopBarProps {
   currentTopicName?: string | null;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ isDarkMode, setIsDarkMode, onLogout, pageInfo, isAdmin, onAdminPanelToggle, currentTopicName }) => {
+const TopBar: React.FC<TopBarProps> = ({ activeSection, onLogout, pageInfo, isAdmin, onAdminPanelToggle, currentTopicName }) => {
   const { searchQuery, setSearchQuery, performSearch, showSearchResults, setShowSearchResults } = useSearch();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -475,13 +473,6 @@ const TopBar: React.FC<TopBarProps> = ({ isDarkMode, setIsDarkMode, onLogout, pa
             )}
           </div>
 
-          {/* Dark Mode Toggle */}
-          <button 
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
-          >
-            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
         </div>
       </div>
 

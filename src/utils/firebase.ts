@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, updateDoc, deleteDoc, getDocs, query, orderBy, limit, where, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, updateDoc, deleteDoc, getDocs, query, orderBy, limit, where, onSnapshot, writeBatch } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 // Firebase configuration
@@ -434,6 +434,48 @@ export const getArticles = async () => {
   }
 };
 
+// Subscribe to articles changes (for real-time updates)
+export const subscribeToArticles = (callback: (articles: any[]) => void) => {
+  try {
+    const articlesRef = collection(db, 'articles');
+    const q = query(articlesRef, where('published', '==', true));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log('📊 Articles snapshot received:', snapshot.size, 'docs');
+      const articles = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data
+        };
+      });
+      // Sort by priority first (lower number = higher priority), then by createdAt as fallback
+      articles.sort((a: any, b: any) => {
+        const priorityA = a.priority !== undefined ? a.priority : 999999;
+        const priorityB = b.priority !== undefined ? b.priority : 999999;
+        
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB; // Lower priority number = appears first
+        }
+        
+        // If priorities are equal, sort by date (newest first)
+        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+        return dateB.getTime() - dateA.getTime();
+      });
+      callback(articles);
+    }, (error) => {
+      console.error('❌ Error in articles subscription:', error);
+      callback([]);
+    });
+    
+    return unsubscribe;
+  } catch (error: any) {
+    console.error('❌ Error setting up articles subscription:', error);
+    return () => {}; // Return empty unsubscribe function
+  }
+};
+
 export const updateArticle = async (articleId: string, articleData: any) => {
   try {
     await updateDoc(doc(db, 'articles', articleId), {
@@ -442,6 +484,35 @@ export const updateArticle = async (articleId: string, articleData: any) => {
     });
     return { success: true, error: null };
   } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
+// Reorder articles by priority
+export const reorderArticles = async (articles: any[]) => {
+  try {
+    console.log('🔄 Reordering articles:', articles.length, 'articles');
+    const batch = writeBatch(db);
+    
+    articles.forEach((article, index) => {
+      if (!article.id) {
+        console.warn('⚠️ Article missing ID:', article);
+        return;
+      }
+      const articleRef = doc(db, 'articles', article.id);
+      const newPriority = index + 1;
+      console.log(`📝 Updating article ${article.id} (${article.title}) to priority ${newPriority}`);
+      batch.update(articleRef, { 
+        priority: newPriority,
+        updatedAt: new Date()
+      });
+    });
+    
+    await batch.commit();
+    console.log('✅ Articles reordered successfully');
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('❌ Error reordering articles:', error);
     return { success: false, error: error.message };
   }
 };

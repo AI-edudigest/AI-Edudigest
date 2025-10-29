@@ -113,12 +113,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     
     window.addEventListener('storage', handleStorageChange);
     
-    // Also refresh every 30 seconds to catch updates
-    const interval = setInterval(loadMenuItems, 30000);
-    
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
     };
   }, []);
 
@@ -157,8 +153,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         {!isCollapsed ? (
           <div className="flex items-center space-x-3">
             <img 
-              src="/AI-Edu_Digest__logo_-removebg-preview.png" 
-              alt="AI-EduDigest Logo" 
+              src="/AI-Edu app logo  .png" 
+              alt="AI-EduApp Logo" 
               className="w-12 h-12"
             />
             <div>
@@ -173,8 +169,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         ) : (
           <img 
-            src="/AI-Edu_Digest__logo_-removebg-preview.png" 
-            alt="AI-EduDigest Logo" 
+            src="/AI-Edu app logo  .png" 
+            alt="AI-EduApp Logo" 
             className="w-32 h-32 mx-auto"
           />
         )}

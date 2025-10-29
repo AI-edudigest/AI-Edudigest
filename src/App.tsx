@@ -31,7 +31,6 @@ function App() {
   const [activeSection, setActiveSection] = useState('home');
   const [expandedMenus, setExpandedMenus] = useState<{ [key: string]: boolean }>({});
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [activeResource, setActiveResource] = useState<string | null>(null);
   const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
   const [userRole, setUserRole] = useState<string>('user');
@@ -181,14 +180,6 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Apply dark mode class to document
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
 
   // Firebase Authentication Effect
   useEffect(() => {
@@ -398,13 +389,13 @@ function App() {
 
   // Show simple welcome screen while checking authentication or if splash is active
   if (checkingAuth || showSplash) {
-    // Use 3 seconds for login mode (new account users), 3.5 seconds for refresh
-    const duration = welcomeMode === 'login' ? 3000 : 3500;
+    // Use 3 seconds for login mode, 2.8 seconds for refresh mode
+    const duration = welcomeMode === 'login' ? 3000 : 2800;
     
     return (
       <SimpleWelcome
         appName="AI-EduApp"
-        logoSrc="/AI-Edu_Digest__logo_-removebg-preview.png"
+        logoSrc="/AI-Edu app logo  .png"
         mode={welcomeMode}
         durationMs={duration}
         onFinish={handleSplashFinish}
@@ -424,7 +415,7 @@ function App() {
 
   return (
     <SearchProvider>
-      <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 flex transition-colors duration-200 ${isDarkMode ? 'dark' : ''}`}>
+      <div className="min-h-screen bg-gray-50 flex transition-colors duration-200">
         {/* Fixed Sidebar */}
         <div className="fixed left-0 top-0 h-full z-40">
           <Sidebar
@@ -441,8 +432,6 @@ function App() {
         <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isCollapsed ? 'ml-16' : 'ml-72'} max-lg:ml-0`}>
           {/* Top Header */}
           <TopBar 
-            isDarkMode={isDarkMode} 
-            setIsDarkMode={setIsDarkMode} 
             activeSection={activeSection} 
             onLogout={handleLogout} 
             pageInfo={getPageInfo(activeSection)}
