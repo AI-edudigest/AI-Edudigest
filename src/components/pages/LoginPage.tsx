@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
-import { signIn, signInWithGoogle, handleGoogleRedirectResult } from '../../utils/firebase';
+import { signIn, signInWithGoogle, handleGoogleRedirectResult, sendPasswordReset } from '../../utils/firebase';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
@@ -14,6 +14,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onShowSignUp }) =
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; google?: string }>({});
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetSending, setResetSending] = useState(false);
+  const [resetMessage, setResetMessage] = useState('');
+  const [resetError, setResetError] = useState('');
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -212,9 +217,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onShowSignUp }) =
                 <input type="checkbox" className="rounded border-gray-300 text-[#9b0101] focus:ring-[#9b0101] mr-2" />
                 Remember me
               </label>
-              <a href="#" className="text-sm text-[#9b0101] hover:text-red-700 transition-colors duration-200">
+              <button type="button" onClick={() => { setResetEmail(email); setResetOpen(true); setResetMessage(''); setResetError(''); }} className="text-sm text-[#9b0101] hover:text-red-700 transition-colors duration-200">
                 Forgot password?
-              </a>
+              </button>
             </div>
 
             {/* Login Button */}
@@ -286,6 +291,36 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onShowSignUp }) =
               </p>
             )}
           </form>
+
+          {/* Password Reset Modal */}
+          {resetOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+              <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                <h3 className="text-lg font-semibold mb-4">Reset your password</h3>
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  setResetMessage('');
+                  setResetError('');
+                  const targetEmail = (resetEmail || email).trim();
+                  if (!targetEmail) { setResetError('Please enter your account email.'); return; }
+                  setResetSending(true);
+                  const res = await sendPasswordReset(targetEmail);
+                  setResetSending(false);
+                  if (res.success) { setResetMessage('Password reset email sent. Check your inbox.'); setResetOpen(false); } else { setResetError(res.error || 'Failed to send email.'); }
+                }} className="space-y-4">
+                  <div>
+                    <label className="text-sm text-gray-700">Email address</label>
+                    <input type="email" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} className="mt-1 w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-[#9b0101]" placeholder="you@example.com" />
+                  </div>
+                  {resetError && <p className="text-red-500 text-sm">{resetError}</p>}
+                  <div className="flex gap-3 justify-end">
+                    <button type="button" onClick={() => setResetOpen(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700">Cancel</button>
+                    <button type="submit" disabled={resetSending} className={`px-4 py-2 rounded-lg text-white ${resetSending ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-[#9b0101] to-red-600 hover:from-red-700 hover:to-red-800'}`}>{resetSending ? 'Sending...' : 'Send link'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="mt-8 text-center animate-in fade-in-50 duration-700 delay-1000">

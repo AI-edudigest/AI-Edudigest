@@ -22,7 +22,6 @@ interface Notification {
 }
 
 interface TopBarProps {
-  activeSection: string;
   onLogout?: () => void;
   pageInfo?: PageInfo | null;
   isAdmin?: boolean;
@@ -30,8 +29,8 @@ interface TopBarProps {
   currentTopicName?: string | null;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ activeSection, onLogout, pageInfo, isAdmin, onAdminPanelToggle, currentTopicName }) => {
-  const { searchQuery, setSearchQuery, performSearch, showSearchResults, setShowSearchResults } = useSearch();
+const TopBar: React.FC<TopBarProps> = ({ onLogout, pageInfo, isAdmin, onAdminPanelToggle, currentTopicName }) => {
+  const { searchQuery, setSearchQuery, performSearch } = useSearch();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -180,13 +179,13 @@ const TopBar: React.FC<TopBarProps> = ({ activeSection, onLogout, pageInfo, isAd
       performSearch(searchQuery);
     }
     if (e.key === 'Escape') {
-      setShowSearchResults(false);
+      // setShowSearchResults(false); // This line was removed
     }
   };
 
   const handleSearchFocus = () => {
     if (searchQuery.trim()) {
-      setShowSearchResults(true);
+      // setShowSearchResults(true); // This line was removed
     }
   };
 

@@ -78,7 +78,7 @@ const SimpleWelcome: React.FC<SimpleWelcomeProps> = ({
                 animation: 'fadeInScale 0.8s ease-out 0.2s both'
               }}
             >
-              Welcome to {appName}
+              Welcome to {appName} 
             </h1>
             
             {/* Subtitle */}
@@ -95,7 +95,7 @@ const SimpleWelcome: React.FC<SimpleWelcomeProps> = ({
       </div>
 
       {/* CSS Animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes fadeInScale {
           0% {
             opacity: 0;

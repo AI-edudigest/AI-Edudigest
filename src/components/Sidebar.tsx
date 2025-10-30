@@ -14,9 +14,6 @@ import {
   BookOpen,
   Target,
   Award,
-  TrendingUp as Growth,
-  Globe,
-  BookOpen as Magazine,
   Settings
 } from 'lucide-react';
 import { getSidebarTabs, getCurrentUser, getUserProfile } from '../utils/firebase';
@@ -72,8 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     BookOpen,
     Target,
     Award,
-    Globe,
-    FileText: Files
+    Globe: Files
   };
 
   // Load dynamic menu items from Firebase
@@ -88,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         if (error) {
           console.error('Error loading sidebar tabs:', error);
           // No fallback - show empty sidebar if Firebase fails
-          setDynamicMenuItems([]);
+          setDynamicMenuItems([] as SidebarTab[]);
         } else {
           // Filter only active tabs and ensure proper typing
           const activeTabs = tabs.filter((tab: any) => tab.active && tab.name && tab.icon);
@@ -97,7 +93,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         }
       } catch (error) {
         console.error('Error loading sidebar tabs:', error);
-        setDynamicMenuItems([]);
+        setDynamicMenuItems([] as SidebarTab[]);
       } finally {
         setLoading(false);
       }
@@ -225,7 +221,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <div className="flex items-center space-x-3">
                       <IconComponent className="w-5 h-5 flex-shrink-0" />
-                      {!isCollapsed && <span className="font-medium">{item.label}</span>}
+                      {!isCollapsed && <span className="font-medium text-black">{item.label}</span>}
                     </div>
                     {item.hasSubmenu && !isCollapsed && (
                       <ChevronDown 

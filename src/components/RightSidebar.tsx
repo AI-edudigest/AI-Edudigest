@@ -1,27 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, 
-  Brain, 
   Zap, 
-  Calendar, 
-  Book, 
-  Lightbulb, 
-  GraduationCap,
-  Wrench,
-  BookOpen,
-  Sparkles,
-  Users,
   Target,
-  Trophy,
-  Globe,
-  TrendingUp,
   FileText,
-  Megaphone,
-  DollarSign,
-  Award,
-  BarChart3,
-  Shield,
-  MessageSquare,
   Newspaper
 } from 'lucide-react';
 import { getResourceTabs, subscribeToNewsUpdates } from '../utils/firebase';
@@ -235,7 +217,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ onResourceClick, onMagazine
                       ) : (
                         <Zap className="w-4 h-4 text-purple-400" />
                       )}
-                      <h5 className="font-medium hover:text-[#9b0101] transition-colors">{update.title}</h5>
+                      <h5 className="font-medium transition-colors">{update.title}</h5>
                     </div>
                     <p className="text-sm text-gray-300 dark:text-gray-400 mb-2">{update.description}</p>
                     <div className="flex space-x-2">

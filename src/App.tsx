@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { onAuthStateChange, getUserRole } from './utils/firebase';
+import { onAuthStateChange, getUserRole, subscribeToSession } from './utils/firebase';
 import { SearchProvider } from './contexts/SearchContext';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
@@ -114,6 +114,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem('sessionId');
       const { signOutUser } = await import('./utils/firebase');
       await signOutUser();
       setShowSignUp(false);
@@ -231,6 +232,22 @@ function App() {
 
     return () => unsubscribe();
   }, [isSignupProcess]);
+
+  // Subscribe to session id
+  useEffect(() => {
+    if (!currentUser || !isLoggedIn) return;
+    // Subscribe to session id
+    const unsub = subscribeToSession(currentUser.uid, (remoteSessionId) => {
+      const local = localStorage.getItem('sessionId');
+      if (remoteSessionId && local && remoteSessionId !== local) {
+        // Session changed elsewhere: log out here!
+        localStorage.removeItem('sessionId');
+        alert('You have been logged out because you logged in from another device.');
+        handleLogout();
+      }
+    });
+    return () => unsub();
+  }, [currentUser, isLoggedIn]);
 
   // Show welcome screen on every app load/refresh
   useEffect(() => {

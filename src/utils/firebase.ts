@@ -1,7 +1,8 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, updateDoc, deleteDoc, getDocs, query, orderBy, limit, where, onSnapshot, writeBatch } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { v4 as uuidv4 } from 'uuid';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -85,10 +86,10 @@ export const deleteNewsUpdate = async (newsId: string) => {
 
 export const reorderNewsUpdates = async (newsList: any[]) => {
   try {
-    const batch = [];
+    const batch: Promise<void>[] = [];
     newsList.forEach((item, index) => {
       const newsRef = doc(db, 'newsUpdates', item.id);
-      batch.push(updateDoc(newsRef, { priority: index + 1 }));
+      batch.push(updateDoc(newsRef, { priority: index + 1 }) as Promise<void>);
     });
     await Promise.all(batch);
     return { success: true };
@@ -135,16 +136,25 @@ export const signUp = async (email: string, password: string, userData?: any) =>
 export const signIn = async (email: string, password: string) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const sessionId = uuidv4();
+    // Store in Firestore user profile
+    await updateDoc(doc(db, 'users', userCredential.user.uid), { currentSessionId: sessionId });
+    // Store locally on this device
+    localStorage.setItem('sessionId', sessionId);
     return { user: userCredential.user, error: null };
   } catch (error: any) {
     // Provide user-friendly error messages
     let userFriendlyMessage = '';
     
     switch (error.code) {
-      case 'auth/invalid-credential':
       case 'auth/user-not-found':
-      case 'auth/wrong-password':
         userFriendlyMessage = 'No account found with this email. Please sign up to create an account.';
+        break;
+      case 'auth/wrong-password':
+        userFriendlyMessage = 'Incorrect password. Please enter the correct password.';
+        break;
+      case 'auth/invalid-credential':
+        userFriendlyMessage = 'Login failed. Please check your email and password, or sign up for a new account.';
         break;
       case 'auth/invalid-email':
         userFriendlyMessage = 'Please enter a valid email address.';
@@ -922,15 +932,15 @@ export const deleteResourceTab = async (tabId: string) => {
 
 export const reorderResourceTabs = async (tabs: any[]) => {
   try {
-    const batch: any[] = [];
+    const batch: Promise<void>[] = [];
     tabs.forEach((tab: any, index: number) => {
       const tabRef = doc(db, 'resourceTabs', tab.id);
-      batch.push(updateDoc(tabRef, { order: index, updatedAt: new Date() }));
+      batch.push(updateDoc(tabRef, { order: index, updatedAt: new Date() }) as Promise<void>);
     });
     await Promise.all(batch);
     return { success: true, error: null };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error) {
+    return { success: false, error: (error as any).message };
   }
 };
 
@@ -1216,15 +1226,15 @@ export const deleteSidebarTab = async (tabId: string) => {
 
 export const reorderSidebarTabs = async (tabs: any[]) => {
   try {
-    const batch: any[] = [];
+    const batch: Promise<void>[] = [];
     tabs.forEach((tab: any, index: number) => {
       const tabRef = doc(db, 'sidebarTabs', tab.id);
-      batch.push(updateDoc(tabRef, { order: index, updatedAt: new Date() }));
+      batch.push(updateDoc(tabRef, { order: index, updatedAt: new Date() }) as Promise<void>);
     });
     await Promise.all(batch);
     return { success: true, error: null };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error) {
+    return { success: false, error: (error as any).message };
   }
 };
 
@@ -1477,3 +1487,35 @@ export const uploadAdImage = async (file: File, adId: string): Promise<string> =
 };
 
 export default app;
+
+// Password Reset via Firebase Auth
+export const sendPasswordReset = async (email: string) => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return { success: true, error: null };
+  } catch (error: any) {
+    let message = 'Failed to send reset email. Please try again.';
+    switch (error.code) {
+      case 'auth/invalid-email':
+        message = 'Please enter a valid email address.';
+        break;
+      case 'auth/user-not-found':
+        message = "We couldn't find an account with that email.";
+        break;
+      case 'auth/too-many-requests':
+        message = 'Too many requests. Please try again later.';
+        break;
+      default:
+        break;
+    }
+    return { success: false, error: message };
+  }
+};
+
+// Export a helper for App to subscribe to the user doc and check session
+export const subscribeToSession = (uid: string, onChange: (remoteSession: string | null) => void) => {
+  return onSnapshot(doc(db, 'users', uid), (docSnap) => {
+    const data = docSnap.data();
+    onChange(data ? data.currentSessionId || null : null);
+  });
+};
