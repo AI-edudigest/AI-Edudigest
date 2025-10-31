@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Shield, User, Mail, Calendar, Edit, Clock, AlertCircle } from 'lucide-react';
-import { getAllUsers, updateUserRole, getCurrentUser } from '../../utils/firebase';
+import { Users, Shield, User, Mail, Calendar, Edit, Clock, AlertCircle, Search, Filter, X, Building2, Trash2 } from 'lucide-react';
+import { getAllUsers, updateUserRole, getCurrentUser, deleteUser } from '../../utils/firebase';
 
 interface User {
   id: string;
@@ -10,14 +10,18 @@ interface User {
   role: string;
   createdAt: any;
   lastLoginAt?: any;
+  institution?: string;
 }
 
 const UsersManager: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newRole, setNewRole] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isFiltered, setIsFiltered] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -62,11 +66,13 @@ Please check:
           const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
           return dateB.getTime() - dateA.getTime();
         });
+        setAllUsers(sortedUsers);
         setUsers(sortedUsers);
         setError(null);
       } else {
         console.warn('No users array in result');
         setUsers([]);
+        setAllUsers([]);
       }
     } catch (error: any) {
       console.error('Error fetching users:', error);
@@ -81,15 +87,41 @@ Please check:
     try {
       const result = await updateUserRole(userId, role);
       if (result.success) {
-        setUsers(users.map(user => 
-          user.id === userId ? { ...user, role } : user
-        ));
+        const updateUser = (user: User) => user.id === userId ? { ...user, role } : user;
+        setUsers(users.map(updateUser));
+        setAllUsers(allUsers.map(updateUser));
         setEditingUser(null);
       } else {
         console.error('Error updating user role:', result.error);
       }
     } catch (error) {
       console.error('Error updating user role:', error);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string, userEmail: string) => {
+    if (!window.confirm(`Are you sure you want to delete user "${userName}" (${userEmail})? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const result = await deleteUser(userId);
+      if (result.success) {
+        // Remove user from both arrays
+        setUsers(users.filter(user => user.id !== userId));
+        setAllUsers(allUsers.filter(user => user.id !== userId));
+        
+        // If we're editing this user, cancel editing
+        if (editingUser?.id === userId) {
+          setEditingUser(null);
+        }
+      } else {
+        alert(`Error deleting user: ${result.error}`);
+        console.error('Error deleting user:', result.error);
+      }
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      alert(`Error deleting user: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -131,6 +163,35 @@ Please check:
     return 'User';
   };
 
+  const handleFilter = () => {
+    if (!searchTerm.trim()) {
+      setIsFiltered(false);
+      setUsers(allUsers);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase().trim();
+    const filtered = allUsers.filter(user => {
+      const institution = (user.institution || '').toLowerCase();
+      return institution.includes(searchLower);
+    });
+    
+    setUsers(filtered);
+    setIsFiltered(true);
+  };
+
+  const handleClearFilter = () => {
+    setSearchTerm('');
+    setIsFiltered(false);
+    setUsers(allUsers);
+  };
+
+  const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleFilter();
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -154,10 +215,43 @@ Please check:
               <Users className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-white/80 text-sm">Total Users</p>
-              <p className="text-3xl font-bold">{users.length}</p>
+              <p className="text-white/80 text-sm">{isFiltered ? 'Filtered Users' : 'Total Users'}</p>
+              <p className="text-3xl font-bold">{users.length}{isFiltered && ` / ${allUsers.length}`}</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Search and Filter Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+        <div className="flex items-center space-x-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by college name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={handleSearchKeyPress}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#9b0101] focus:border-transparent"
+            />
+          </div>
+          <button
+            onClick={handleFilter}
+            className="px-4 py-2 bg-[#9b0101] text-white rounded-lg hover:bg-[#7a0101] transition-colors flex items-center space-x-2"
+          >
+            <Filter className="w-4 h-4" />
+            <span>Filter</span>
+          </button>
+          {isFiltered && (
+            <button
+              onClick={handleClearFilter}
+              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-2"
+            >
+              <X className="w-4 h-4" />
+              <span>Clear</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -177,9 +271,13 @@ Please check:
       {/* Users Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">All Users</h3>
-          {users.length === 0 && !error ? (
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            {isFiltered ? `Filtered Users (${users.length} results)` : 'All Users'}
+          </h3>
+          {users.length === 0 && !error && !isFiltered ? (
             <p className="text-gray-500 dark:text-gray-400">No users found.</p>
+          ) : users.length === 0 && !error && isFiltered ? (
+            <p className="text-gray-500 dark:text-gray-400">No users found matching "{searchTerm}". Try a different search term.</p>
           ) : users.length === 0 && error ? (
             <p className="text-gray-500 dark:text-gray-400">Unable to load users. Please check the error message above.</p>
           ) : (
@@ -189,6 +287,7 @@ Please check:
                   <tr className="border-b border-gray-200 dark:border-gray-700">
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-white">Name</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-white">Email ID</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-white">Colleges</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-white">Signup Date</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-white">Login Time</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 dark:text-white">Role</th>
@@ -215,6 +314,12 @@ Please check:
                       </td>
                       <td className="py-3 px-4">
                         <span className="text-gray-700 dark:text-gray-300">{user.email}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center text-gray-700 dark:text-gray-300">
+                          <Building2 className="w-4 h-4 mr-2 text-gray-500" />
+                          <span className="text-sm">{user.institution || 'Not specified'}</span>
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center text-gray-700 dark:text-gray-300">
@@ -261,16 +366,25 @@ Please check:
                               </button>
                             </div>
                           ) : (
-                            <button
-                              onClick={() => {
-                                setEditingUser(user);
-                                setNewRole(user.role);
-                              }}
-                              className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg transition-colors"
-                              title="Edit Role"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => {
+                                  setEditingUser(user);
+                                  setNewRole(user.role);
+                                }}
+                                className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg transition-colors"
+                                title="Edit Role"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(user.id, getUserName(user), user.email)}
+                                className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition-colors"
+                                title="Delete User"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           )}
                         </div>
                       </td>

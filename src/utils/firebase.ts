@@ -415,6 +415,16 @@ export const updateUserRole = async (userId: string, role: string) => {
   }
 };
 
+export const deleteUser = async (userId: string) => {
+  try {
+    await deleteDoc(doc(db, 'users', userId));
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error deleting user:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Admin functions
 export const getAllUsers = async () => {
   try {
@@ -1272,6 +1282,7 @@ export const addEvent = async (eventData: any) => {
       type: eventData.type || '',
       description: eventData.description || '',
       date: eventData.date,
+      time: eventData.time || '',
       location: eventData.location || '',
       createdBy: user.uid,
       createdAt: new Date(),
@@ -1282,6 +1293,31 @@ export const addEvent = async (eventData: any) => {
     return { success: true, error: null };
   } catch (error: any) {
     console.error('Error adding event:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateEvent = async (eventId: string, eventData: any) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('User must be authenticated to update events');
+    }
+
+    const eventDoc = {
+      title: eventData.title,
+      type: eventData.type || '',
+      description: eventData.description || '',
+      date: eventData.date,
+      time: eventData.time || '',
+      location: eventData.location || '',
+      updatedAt: new Date()
+    };
+
+    await updateDoc(doc(db, 'events', eventId), eventDoc);
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error updating event:', error);
     return { success: false, error: error.message };
   }
 };
@@ -1304,13 +1340,40 @@ export const deleteEvent = async (eventId: string) => {
 export const getEvents = async () => {
   try {
     const eventsRef = collection(db, 'events');
-    const q = query(eventsRef, where('active', '==', true), orderBy('date', 'asc'));
+    // Try to order by createdAt first, fallback to no ordering if it fails
+    let q;
+    try {
+      q = query(eventsRef, where('active', '==', true), orderBy('createdAt', 'desc'));
+    } catch (error) {
+      // If createdAt ordering fails, get all events and sort manually
+      q = query(eventsRef, where('active', '==', true));
+    }
     const querySnapshot = await getDocs(q);
     
     const events = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
+    
+    // Sort by createdAt descending (most recent first)
+    events.sort((a: any, b: any) => {
+      let dateA: Date;
+      let dateB: Date;
+      
+      if (a.createdAt) {
+        dateA = a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+      } else {
+        dateA = new Date(0);
+      }
+      
+      if (b.createdAt) {
+        dateB = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+      } else {
+        dateB = new Date(0);
+      }
+      
+      return dateB.getTime() - dateA.getTime();
+    });
     
     return { events, error: null };
   } catch (error: any) {
@@ -1338,11 +1401,26 @@ export const subscribeToEvents = (callback: (events: any[]) => void) => {
         };
       });
       
-      // Sort events by date after fetching (since orderBy might fail)
+      // Sort events by createdAt descending (most recent first)
       events.sort((a: any, b: any) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        return dateA.getTime() - dateB.getTime();
+        let dateA: Date;
+        let dateB: Date;
+        
+        // Handle createdAt field (could be Timestamp or Date)
+        if (a.createdAt) {
+          dateA = a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+        } else {
+          dateA = new Date(0); // Fallback for events without createdAt
+        }
+        
+        if (b.createdAt) {
+          dateB = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+        } else {
+          dateB = new Date(0); // Fallback for events without createdAt
+        }
+        
+        // Sort descending (most recent first)
+        return dateB.getTime() - dateA.getTime();
       });
       
       console.log('✅ Processed and sorted events:', events);
@@ -1503,6 +1581,86 @@ export const uploadAdImage = async (file: File, adId: string): Promise<string> =
     return url;
   } catch (error) {
     console.error('Error in uploadAdImage:', error);
+    throw error;
+  }
+};
+
+// Magazine Covers Management Functions
+export const getMagazineCovers = async () => {
+  try {
+    const coversRef = collection(db, 'magazineCovers');
+    const q = query(coversRef, orderBy('order', 'asc'));
+    const querySnapshot = await getDocs(q);
+    
+    const covers = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    return { covers, error: null };
+  } catch (error: any) {
+    console.error('Error fetching magazine covers:', error);
+    return { covers: [], error: error.message };
+  }
+};
+
+export const createMagazineCover = async (coverData: any) => {
+  try {
+    const coversRef = collection(db, 'magazineCovers');
+    const docRef = await addDoc(coversRef, {
+      ...coverData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      active: coverData.active !== undefined ? coverData.active : true,
+      order: coverData.order || 0
+    });
+    return { id: docRef.id, error: null };
+  } catch (error: any) {
+    console.error('Error creating magazine cover:', error);
+    return { id: null, error: error.message };
+  }
+};
+
+export const updateMagazineCover = async (coverId: string, coverData: any) => {
+  try {
+    const coverRef = doc(db, 'magazineCovers', coverId);
+    await updateDoc(coverRef, {
+      ...coverData,
+      updatedAt: new Date()
+    });
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error updating magazine cover:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteMagazineCover = async (coverId: string) => {
+  try {
+    const coverRef = doc(db, 'magazineCovers', coverId);
+    await deleteDoc(coverRef);
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error deleting magazine cover:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const uploadMagazineCoverImage = async (file: File, coverId: string): Promise<string> => {
+  try {
+    console.log('Starting image upload for magazine cover:', coverId);
+    console.log('File details:', { name: file.name, size: file.size, type: file.type });
+    
+    const timestamp = Date.now();
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `magazineCovers/${coverId}/cover_${timestamp}.${fileExtension}`;
+    
+    console.log('Uploading to path:', fileName);
+    const url = await uploadFile(file, fileName);
+    console.log('Upload completed, URL:', url);
+    
+    return url;
+  } catch (error) {
+    console.error('Error in uploadMagazineCoverImage:', error);
     throw error;
   }
 };

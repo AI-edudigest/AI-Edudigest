@@ -8,6 +8,7 @@ interface Event {
   type: string;
   description: string;
   date: string;
+  time?: string;
   location: string;
   createdBy: string;
   createdAt: any;
@@ -105,6 +106,20 @@ const EventsManager: React.FC = () => {
       });
     } catch (error) {
       return dateString;
+    }
+  };
+
+  // Format time for display (HH:MM to 12-hour format)
+  const formatTime = (timeString: string): string => {
+    if (!timeString) return '';
+    try {
+      const [hours, minutes] = timeString.split(':');
+      const hour = parseInt(hours, 10);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour % 12 || 12;
+      return `${displayHour}:${minutes} ${ampm}`;
+    } catch (error) {
+      return timeString;
     }
   };
 
@@ -219,7 +234,10 @@ const EventsManager: React.FC = () => {
                         {event.date && (
                           <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
                             <Clock className="w-4 h-4" />
-                            <span>{formatDate(event.date)}</span>
+                            <span>
+                              {formatDate(event.date)}
+                              {event.time && ` at ${formatTime(event.time)}`}
+                            </span>
                           </div>
                         )}
                         {event.location && (

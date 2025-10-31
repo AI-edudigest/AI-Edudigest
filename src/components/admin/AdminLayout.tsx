@@ -4,7 +4,6 @@ import {
   FileText, 
   Megaphone, 
   Users, 
-  Settings, 
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -12,20 +11,22 @@ import {
   BookOpen,
   MessageSquare,
   Calendar,
-  Newspaper
+  Newspaper,
+  BookMarked
 } from 'lucide-react';
 import AdminDashboard from './AdminDashboard';
 import ArticlesManager from './ArticlesManager';
 import SponsorsManager from './SponsorsManager';
 import AdsManager from './AdsManager';
 import UsersManager from './UsersManager';
-import SettingsManager from './SettingsManager';
 import ResourceTabsManager from './ResourceTabsManager';
 import ResourceTabContentManager from './ResourceTabContentManager';
 import SidebarTabsManager from './SidebarTabsManager';
 import EventsManager from './EventsManager';
 import EguideContentManager from './EguideContentManager';
 import LatestUpdatesManager from './LatestUpdatesManager';
+import PromptTemplatesManager from './PromptTemplatesManager';
+import MagazineCoversManager from './MagazineCoversManager';
 
 interface AdminLayoutProps {
   onLogout: () => void;
@@ -44,10 +45,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout, onBackToHome }) => 
     { id: 'ads', label: 'Ads', icon: Megaphone },
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'news', label: 'Latest Updates', icon: Newspaper },
+    { id: 'promptTemplates', label: 'Prompt Templates', icon: MessageSquare },
     { id: 'resourceTabs', label: 'Resource Tabs', icon: BookOpen },
     { id: 'sidebarTabs', label: 'Sidebar Tabs', icon: LayoutDashboard },
-    { id: 'users', label: 'Users', icon: Users },
-    { id: 'settings', label: 'Settings', icon: Settings }
+    { id: 'magazineCovers', label: 'Magazine Covers', icon: BookMarked },
+    { id: 'users', label: 'Users', icon: Users }
   ];
 
   const renderContent = () => {
@@ -64,6 +66,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout, onBackToHome }) => 
         return <EventsManager />;
       case 'news':
         return <LatestUpdatesManager />;
+      case 'promptTemplates':
+        return <PromptTemplatesManager />;
       case 'resourceTabs':
         return contentManagerTab ? (
           contentManagerTab.tabName.toLowerCase() === 'e-guide' ? (
@@ -80,10 +84,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout, onBackToHome }) => 
         );
       case 'sidebarTabs':
         return <SidebarTabsManager />;
+      case 'magazineCovers':
+        return <MagazineCoversManager />;
       case 'users':
         return <UsersManager />;
-      case 'settings':
-        return <SettingsManager />;
       default:
         return <AdminDashboard onNavigate={setActiveTab} />;
     }
@@ -177,8 +181,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout, onBackToHome }) => 
                   {activeTab === 'sponsors' && 'Manage sponsors and partnerships'}
                   {activeTab === 'resourceTabs' && 'Manage resource content and information'}
                   {activeTab === 'sidebarTabs' && 'Manage sidebar navigation menu'}
+                  {activeTab === 'magazineCovers' && 'Manage magazine cover images for Latest Editions'}
                   {activeTab === 'users' && 'Manage user accounts and roles'}
-                  {activeTab === 'settings' && 'Configure site settings'}
                 </p>
               </div>
             </div>

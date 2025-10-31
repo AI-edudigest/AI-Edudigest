@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Calendar, Book, Lightbulb, GraduationCap, ExternalLink, Clock, MapPin, Star, Download, ChevronLeft, Check, Plus, X, Trash2, BookOpen } from 'lucide-react';
+import { Zap, Calendar, Book, Lightbulb, GraduationCap, ExternalLink, Clock, MapPin, Star, Download, ChevronLeft, Check, Plus, X, Trash2, BookOpen, Edit } from 'lucide-react';
 import { BackButtonProps } from '../../types/common';
-import { getResourceTabs, getResourceTabContent, addEvent, deleteEvent, subscribeToEvents } from '../../utils/firebase';
+import { getResourceTabs, getResourceTabContent, addEvent, updateEvent, deleteEvent, subscribeToEvents } from '../../utils/firebase';
 import FeedbackPage from './FeedbackPage';
 import EguideViewer from './EguideViewer';
 
@@ -17,13 +17,15 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
   const [dynamicItems, setDynamicItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Event creation modal state
+  // Event creation/editing modal state
   const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [eventFormData, setEventFormData] = useState({
     title: '',
     type: '',
     description: '',
     date: '',
+    time: '',
     location: ''
   });
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
@@ -91,7 +93,20 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
     setEventSubmitError('');
 
     try {
-      const result = await addEvent(eventFormData);
+      let result;
+      if (editingEventId) {
+        // Update existing event
+        result = await updateEvent(editingEventId, eventFormData);
+        if (result.success) {
+          alert('Event updated successfully!');
+        }
+      } else {
+        // Create new event
+        result = await addEvent(eventFormData);
+        if (result.success) {
+          alert('Event added successfully!');
+        }
+      }
       
       if (result.success) {
         // Reset form and close modal
@@ -100,35 +115,51 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
           type: '',
           description: '',
           date: '',
+          time: '',
           location: ''
         });
+        setEditingEventId(null);
         setShowEventModal(false);
-        
-        // Show success message
-        alert('Event added successfully!');
       } else {
-        setEventSubmitError(result.error || 'Failed to add event. Please try again.');
+        setEventSubmitError(result.error || `Failed to ${editingEventId ? 'update' : 'add'} event. Please try again.`);
       }
     } catch (error: any) {
-      console.error('Error adding event:', error);
-      setEventSubmitError(error.message || 'Failed to add event. Please try again.');
+      console.error(`Error ${editingEventId ? 'updating' : 'adding'} event:`, error);
+      setEventSubmitError(error.message || `Failed to ${editingEventId ? 'update' : 'add'} event. Please try again.`);
     } finally {
       setIsSubmittingEvent(false);
     }
   };
 
   const openEventModal = () => {
+    setEditingEventId(null);
+    setShowEventModal(true);
+    setEventSubmitError('');
+  };
+
+  const openEditEventModal = (event: any) => {
+    setEditingEventId(event.id);
+    setEventFormData({
+      title: event.name || event.title || '',
+      type: event.type || '',
+      description: event.description || '',
+      date: event.date || '',
+      time: event.time || '',
+      location: event.location || ''
+    });
     setShowEventModal(true);
     setEventSubmitError('');
   };
 
   const closeEventModal = () => {
     setShowEventModal(false);
+    setEditingEventId(null);
     setEventFormData({
       title: '',
       type: '',
       description: '',
       date: '',
+      time: '',
       location: ''
     });
     setEventSubmitError('');
@@ -190,6 +221,7 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
                 type: event.type,
                 description: event.description,
                 date: event.date,
+                time: event.time || '',
                 location: event.location,
                 link: null // Events don't have links by default
               };
@@ -213,13 +245,20 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
           return;
         }
         
+        // Helper to safely lowercase possibly undefined values
+        const lc = (v: any) => (typeof v === 'string' ? v.toLowerCase() : '');
+        
         // Find the tab that matches the current resource type
         const matchingTab = tabs.find(tab => {
-          const tabName = (tab as any).name?.toLowerCase() || '';
+          const tabName = lc((tab as any).name);
+          const tabCategory = lc((tab as any).category);
+          const tabLink = lc((tab as any).link);
           if (resourceType === 'aiTools') return tabName.includes('ai tools') || tabName.includes('tools');
           if (resourceType === 'recommendedBooks') return tabName.includes('books') || tabName.includes('recommended');
           if (resourceType === 'freeCourses') return tabName.includes('courses') || tabName.includes('free');
-          if (resourceType === 'promptTemplates') return tabName.includes('templates') || tabName.includes('prompt');
+          if (resourceType === 'promptTemplates') {
+            return tabName.includes('templates') || tabName.includes('prompt') || tabCategory === 'templates' || tabLink.includes('prompttemplates');
+          }
           return false;
         });
         
@@ -286,12 +325,58 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
               console.log('🎯 Setting dynamicItems to:', organizedTemplates);
               setDynamicItems(organizedTemplates);
             } else {
-            setDynamicItems(activeContents);
+              // Sort by createdAt descending for events (most recent first)
+              if (resourceType === 'upcomingEvents') {
+                const sortedContents = [...activeContents].sort((a: any, b: any) => {
+                  let dateA: Date;
+                  let dateB: Date;
+                  
+                  if (a.createdAt) {
+                    dateA = a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+                  } else {
+                    dateA = new Date(0);
+                  }
+                  
+                  if (b.createdAt) {
+                    dateB = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+                  } else {
+                    dateB = new Date(0);
+                  }
+                  
+                  return dateB.getTime() - dateA.getTime();
+                });
+                setDynamicItems(sortedContents);
+              } else {
+                setDynamicItems(activeContents);
+              }
             }
           }
         } else {
-          console.log('❌ No matching tab found for:', resourceType);
-          setDynamicItems([]);
+          // Fallback: try to locate any tab by category/link for prompt templates
+          if (resourceType === 'promptTemplates') {
+            const altTab = tabs.find(t => lc((t as any).category) === 'templates' || lc((t as any).link).includes('prompttemplates'));
+            if (altTab) {
+              const { contents } = await getResourceTabContent(altTab.id);
+              const activeContents = (contents || []).filter((c: any) => c.active);
+              const categoryConfig: { [key: string]: { description: string; icon: string; color: string } } = {
+                'Leaders': { description: 'For College Principals, Directors, and Management', icon: '👔', color: 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' },
+                'Administration': { description: 'For College Administrative Staff, Office Personnel, and Clerks', icon: '📋', color: 'bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400' },
+                'Educators': { description: 'For College Professors, Lecturers, and Teaching Faculty', icon: '🎓', color: 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400' }
+              };
+              const organized = Object.keys(categoryConfig).map(key => ({
+                name: key,
+                description: categoryConfig[key].description,
+                icon: categoryConfig[key].icon,
+                color: categoryConfig[key].color,
+                templates: activeContents.filter((t: any) => t.category === key).map((t: any) => ({ name: t.name, description: t.description, template: t.template }))
+              })).filter(cat => cat.templates.length > 0);
+              setDynamicItems(organized);
+            } else {
+              setDynamicItems([]);
+            }
+          } else {
+            setDynamicItems([]);
+          }
         }
       } catch (error) {
         console.error('❌ Error loading dynamic content:', error);
@@ -402,6 +487,20 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
     displayCategories = [];
   }
 
+  // Format time for display (HH:MM to 12-hour format)
+  const formatTime = (timeString: string): string => {
+    if (!timeString) return '';
+    try {
+      const [hours, minutes] = timeString.split(':');
+      const hour = parseInt(hours, 10);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour % 12 || 12;
+      return `${displayHour}:${minutes} ${ampm}`;
+    } catch (error) {
+      return timeString;
+    }
+  };
+
   // Debug logging for upcoming events
   if (resourceType === 'upcomingEvents') {
     console.log('🎯 Upcoming Events Debug:');
@@ -475,16 +574,26 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
                     {item.type}
                   </span>
                 )}
-                {/* Delete button - visible only for principals and admins */}
+                {/* Edit and Delete buttons - visible only for leaders and admins */}
                 {resourceType === 'upcomingEvents' && (userRole === 'leaders' || userRole === 'admin') && item.id && (
-                  <button
-                    onClick={() => handleDeleteClick(item.id, item.name)}
-                    className="p-1.5 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors duration-200 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20"
-                    title="Delete event"
-                    aria-label="Delete event"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={() => openEditEventModal(item)}
+                      className="p-1.5 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors duration-200 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                      title="Edit event"
+                      aria-label="Edit event"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(item.id, item.name)}
+                      className="p-1.5 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors duration-200 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20"
+                      title="Delete event"
+                      aria-label="Delete event"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -493,7 +602,10 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
               {item.date && (
                 <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
                   <Clock className="w-4 h-4" />
-                  <span>{item.date}</span>
+                  <span>
+                    {item.date}
+                    {item.time && ` at ${formatTime(item.time)}`}
+                  </span>
                 </div>
               )}
               {item.location && (
@@ -766,7 +878,9 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add New Event</h2>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {editingEventId ? 'Edit Event' : 'Add New Event'}
+                </h2>
                 <button
                   onClick={closeEventModal}
                   className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
@@ -844,6 +958,20 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
                   />
                 </div>
 
+                {/* Event Time */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Event Time
+                  </label>
+                  <input
+                    type="time"
+                    name="time"
+                    value={eventFormData.time}
+                    onChange={handleEventInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-[#9b0101] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+
                 {/* Location */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -880,7 +1008,7 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
                     disabled={isSubmittingEvent}
                     className="flex-1 px-4 py-2 bg-[#9b0101] hover:bg-[#7a0101] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isSubmittingEvent ? 'Adding...' : 'Add Event'}
+                    {isSubmittingEvent ? (editingEventId ? 'Updating...' : 'Adding...') : (editingEventId ? 'Update Event' : 'Add Event')}
                   </button>
                 </div>
               </form>

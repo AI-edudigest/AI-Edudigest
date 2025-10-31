@@ -58,7 +58,7 @@ const ResourceContentManager: React.FC<ResourceContentManagerProps> = ({ resourc
         return {
           title: 'Upcoming Events Manager',
           collectionName: 'upcomingEvents',
-          fields: ['name', 'description', 'date', 'location', 'type', 'link']
+          fields: ['name', 'description', 'date', 'time', 'location', 'type', 'link']
         };
       case 'recommendedBooks':
         return {
@@ -265,6 +265,21 @@ const ResourceContentManager: React.FC<ResourceContentManagerProps> = ({ resourc
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-[#9b0101] text-gray-900 dark:text-white bg-white dark:bg-gray-700"
               placeholder="e.g., February 19-20, 2026"
+            />
+          </div>
+        );
+      
+      case 'time':
+        return (
+          <div key={field}>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Event Time
+            </label>
+            <input
+              type="time"
+              value={formData.time || ''}
+              onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-[#9b0101] text-gray-900 dark:text-white bg-white dark:bg-gray-700"
             />
           </div>
         );
