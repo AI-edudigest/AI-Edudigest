@@ -123,7 +123,15 @@ export const signUp = async (email: string, password: string, userData?: any) =>
       await setDoc(doc(db, 'users', user.uid), {
         email: user.email,
         role: userData.role || 'user',
+        createdAt: new Date(),
         ...userData
+      });
+    } else {
+      // Create user document with basic info if no userData provided
+      await setDoc(doc(db, 'users', user.uid), {
+        email: user.email,
+        role: 'user',
+        createdAt: new Date()
       });
     }
     
@@ -138,7 +146,10 @@ export const signIn = async (email: string, password: string) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const sessionId = uuidv4();
     // Store in Firestore user profile
-    await updateDoc(doc(db, 'users', userCredential.user.uid), { currentSessionId: sessionId });
+    await updateDoc(doc(db, 'users', userCredential.user.uid), { 
+      currentSessionId: sessionId,
+      lastLoginAt: new Date()
+    });
     // Store locally on this device
     localStorage.setItem('sessionId', sessionId);
     return { user: userCredential.user, error: null };
@@ -407,14 +418,24 @@ export const updateUserRole = async (userId: string, role: string) => {
 // Admin functions
 export const getAllUsers = async () => {
   try {
+    console.log('getAllUsers: Starting to fetch users from Firestore...');
     const usersSnapshot = await getDocs(collection(db, 'users'));
-    const users = usersSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    console.log('getAllUsers: Snapshot size:', usersSnapshot.size);
+    const users = usersSnapshot.docs.map(doc => {
+      const data = doc.data();
+      console.log('getAllUsers: User doc:', doc.id, data);
+      return {
+        id: doc.id,
+        ...data
+      };
+    });
+    console.log('getAllUsers: Returning', users.length, 'users');
     return { users, error: null };
   } catch (error: any) {
-    return { users: [], error: error.message };
+    console.error('getAllUsers: Error fetching users:', error);
+    console.error('getAllUsers: Error code:', error.code);
+    console.error('getAllUsers: Error message:', error.message);
+    return { users: [], error: error.message || 'Failed to fetch users' };
   }
 };
 
