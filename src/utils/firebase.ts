@@ -75,10 +75,10 @@ export const updateNewsUpdate = async (newsId: string, newsData: any) => {
 
 export const deleteNewsUpdate = async (newsId: string) => {
   try {
-    const newsRef = doc(db, 'newsUpdates', newsId);
-    await deleteDoc(newsRef);
-    return { success: true };
-  } catch (error) {
+    // Use soft delete instead of hard delete
+    const result = await softDeleteItem('newsUpdates', newsId);
+    return { success: result.success, error: result.error || null };
+  } catch (error: any) {
     console.error('Error deleting news update:', error);
     return { success: false, error };
   }
@@ -104,10 +104,12 @@ export const subscribeToNewsUpdates = (callback: (updates: any[]) => void) => {
   const q = query(newsRef, where('active', '==', true), orderBy('priority', 'asc'));
   
   return onSnapshot(q, (querySnapshot) => {
-    const updates = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const updates = querySnapshot.docs
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      .filter((update: any) => !update.deleted); // Filter out soft-deleted updates
     callback(updates);
   });
 };
@@ -465,10 +467,12 @@ export const createArticle = async (articleData: any) => {
 export const getArticles = async () => {
   try {
     const articlesSnapshot = await getDocs(collection(db, 'articles'));
-    const articles = articlesSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const articles = articlesSnapshot.docs
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      .filter((article: any) => !article.deleted); // Filter out soft-deleted articles
     return { articles, error: null };
   } catch (error: any) {
     return { articles: [], error: error.message };
@@ -560,8 +564,8 @@ export const reorderArticles = async (articles: any[]) => {
 
 export const deleteArticle = async (articleId: string) => {
   try {
-    await deleteDoc(doc(db, 'articles', articleId));
-    return { success: true, error: null };
+    // Use soft delete instead of hard delete
+    return await softDeleteItem('articles', articleId);
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -584,10 +588,12 @@ export const createSponsor = async (sponsorData: any) => {
 export const getSponsors = async () => {
   try {
     const sponsorsSnapshot = await getDocs(collection(db, 'sponsors'));
-    const sponsors = sponsorsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const sponsors = sponsorsSnapshot.docs
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      .filter((sponsor: any) => !sponsor.deleted); // Filter out soft-deleted sponsors
     return { sponsors, error: null };
   } catch (error: any) {
     return { sponsors: [], error: error.message };
@@ -608,8 +614,8 @@ export const updateSponsor = async (sponsorId: string, sponsorData: any) => {
 
 export const deleteSponsor = async (sponsorId: string) => {
   try {
-    await deleteDoc(doc(db, 'sponsors', sponsorId));
-    return { success: true, error: null };
+    // Use soft delete instead of hard delete
+    return await softDeleteItem('sponsors', sponsorId);
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -671,10 +677,12 @@ export const getResourceContent = async (collectionName: string) => {
   try {
     const contentRef = collection(db, collectionName);
     const snapshot = await getDocs(contentRef);
-    const data = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const data = snapshot.docs
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      .filter((item: any) => !item.deleted); // Filter out soft-deleted items
     return data;
   } catch (error: any) {
     console.error('Error fetching resource content:', error);
@@ -712,8 +720,8 @@ export const updateResourceContent = async (collectionName: string, contentId: s
 
 export const deleteResourceContent = async (collectionName: string, contentId: string) => {
   try {
-    await deleteDoc(doc(db, collectionName, contentId));
-    return { success: true, error: null };
+    // Use soft delete instead of hard delete
+    return await softDeleteItem(collectionName, contentId);
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -852,10 +860,12 @@ export const getAITools = async () => {
   try {
     const toolsRef = collection(db, 'aiTools');
     const snapshot = await getDocs(toolsRef);
-    const tools = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const tools = snapshot.docs
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      .filter((tool: any) => !tool.deleted); // Filter out soft-deleted tools
     return { tools, error: null };
   } catch (error: any) {
     return { tools: [], error: error.message };
@@ -892,8 +902,8 @@ export const updateAITool = async (toolId: string, toolData: any) => {
 
 export const deleteAITool = async (toolId: string) => {
   try {
-    await deleteDoc(doc(db, 'aiTools', toolId));
-    return { success: true, error: null };
+    // Use soft delete instead of hard delete
+    return await softDeleteItem('aiTools', toolId);
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -1032,8 +1042,8 @@ export const updateResourceTabContent = async (contentId: string, contentData: a
 
 export const deleteResourceTabContent = async (contentId: string) => {
   try {
-    await deleteDoc(doc(db, 'resourceTabContent', contentId));
-    return { success: true, error: null };
+    // Use soft delete instead of hard delete
+    return await softDeleteItem('resourceTabContent', contentId);
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -1277,6 +1287,29 @@ export const addEvent = async (eventData: any) => {
       throw new Error('User must be authenticated to add events');
     }
 
+    // Get the creator's college/institution
+    let creatorCollege = '';
+    try {
+      const userProfile = await getUserProfile(user.uid);
+      if (userProfile.profile?.institution) {
+        creatorCollege = userProfile.profile.institution.trim();
+        console.log('🏫 Event creator college:', creatorCollege);
+      } else {
+        console.warn('⚠️ User has no institution set. Event will not be visible to other users.');
+      }
+    } catch (error) {
+      console.error('Error getting user college for event:', error);
+      // Continue without college if error occurs
+    }
+    
+    // Validate that leader/admin has a college set
+    if (!creatorCollege || creatorCollege === '') {
+      console.warn('⚠️ Event created without college - will not be visible to regular users');
+    }
+
+    // Check if event should be marked as history based on date
+    const isHistory = eventData.date ? isEventInHistory(eventData.date) : false;
+
     const eventDoc = {
       title: eventData.title,
       type: eventData.type || '',
@@ -1285,8 +1318,10 @@ export const addEvent = async (eventData: any) => {
       time: eventData.time || '',
       location: eventData.location || '',
       createdBy: user.uid,
+      college: creatorCollege, // Store creator's college with event
       createdAt: new Date(),
-      active: true
+      active: true,
+      isHistory: isHistory // Mark if event is already in history
     };
 
     await addDoc(collection(db, 'events'), eventDoc);
@@ -1304,6 +1339,9 @@ export const updateEvent = async (eventId: string, eventData: any) => {
       throw new Error('User must be authenticated to update events');
     }
 
+    // Check if event should be marked as history based on updated date
+    const isHistory = eventData.date ? isEventInHistory(eventData.date) : false;
+
     const eventDoc = {
       title: eventData.title,
       type: eventData.type || '',
@@ -1311,6 +1349,7 @@ export const updateEvent = async (eventId: string, eventData: any) => {
       date: eventData.date,
       time: eventData.time || '',
       location: eventData.location || '',
+      isHistory: isHistory, // Update history status based on new date
       updatedAt: new Date()
     };
 
@@ -1324,13 +1363,8 @@ export const updateEvent = async (eventId: string, eventData: any) => {
 
 export const deleteEvent = async (eventId: string) => {
   try {
-    const user = auth.currentUser;
-    if (!user) {
-      throw new Error('User must be authenticated to delete events');
-    }
-
-    await deleteDoc(doc(db, 'events', eventId));
-    return { success: true, error: null };
+    // Use soft delete instead of hard delete
+    return await softDeleteItem('events', eventId);
   } catch (error: any) {
     console.error('Error deleting event:', error);
     return { success: false, error: error.message };
@@ -1339,6 +1373,37 @@ export const deleteEvent = async (eventId: string) => {
 
 export const getEvents = async () => {
   try {
+    // Get current user's college and role for filtering
+    let userCollege = '';
+    let userRole = 'user';
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        userRole = await getUserRole(user.uid);
+        
+        // Admin users see all events, everyone else is filtered by college
+        if (userRole === 'admin') {
+          console.log('👑 getEvents: Admin user - showing all events');
+        } else {
+          // Get college for leaders, students, and all other non-admin users
+          const userProfile = await getUserProfile(user.uid);
+          if (userProfile.profile?.institution) {
+            userCollege = userProfile.profile.institution.trim();
+            console.log('🔍 getEvents: Filtering for user college:', userCollege, 'Role:', userRole);
+            
+            // Log for debugging
+            if (!userCollege || userCollege === '') {
+              console.warn('⚠️ getEvents: User college is empty after trim - user will not see any events');
+            }
+          } else {
+            console.warn('⚠️ getEvents: User has no institution set');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error getting user college/role for event filtering:', error);
+    }
+
     const eventsRef = collection(db, 'events');
     // Try to order by createdAt first, fallback to no ordering if it fails
     let q;
@@ -1350,10 +1415,45 @@ export const getEvents = async () => {
     }
     const querySnapshot = await getDocs(q);
     
-    const events = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const events = querySnapshot.docs
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      .filter((event: any) => {
+        // Filter out soft-deleted events
+        if (event.deleted) return false;
+        
+        // Admin users see all events
+        if (userRole === 'admin') return true;
+        
+        // For non-admin users, require both event and user to have college set
+        // If user has no college, don't show any events (security)
+        if (!userCollege || userCollege.trim() === '') {
+          console.log('🚫 getEvents: User has no college - hiding event:', event.title || event.id);
+          return false;
+        }
+        
+        // Normalize college names for comparison (trim and lowercase)
+        const eventCollege = event.college ? event.college.trim().toLowerCase() : '';
+        const normalizedUserCollege = userCollege.trim().toLowerCase();
+        
+        // If event has no college field, don't show it to regular users (security)
+        if (!eventCollege || eventCollege === '') {
+          console.log('🚫 getEvents: Event has no college - hiding from user:', event.title || event.id);
+          return false;
+        }
+        
+        // Only show if colleges match exactly (case-insensitive)
+        if (eventCollege === normalizedUserCollege) {
+          console.log('✅ getEvents: Event college matches user college:', event.title || event.id, eventCollege);
+          return true;
+        }
+        
+        // Don't show events from other colleges
+        console.log('🚫 getEvents: Event college does not match:', event.title || event.id, 'Event college:', eventCollege, 'User college:', normalizedUserCollege);
+        return false;
+      });
     
     // Sort by createdAt descending (most recent first)
     events.sort((a: any, b: any) => {
@@ -1382,6 +1482,27 @@ export const getEvents = async () => {
   }
 };
 
+// Helper function to check if an event is in history (10+ days past the event date)
+export const isEventInHistory = (eventDate: string): boolean => {
+  if (!eventDate) return false;
+  
+  try {
+    const eventDateTime = new Date(eventDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+    
+    // Calculate difference in days
+    const diffTime = today.getTime() - eventDateTime.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Event is in history if it's 10 or more days past
+    return diffDays >= 10;
+  } catch (error) {
+    console.error('Error parsing event date:', error);
+    return false;
+  }
+};
+
 export const subscribeToEvents = (callback: (events: any[]) => void) => {
   try {
     const eventsRef = collection(db, 'events');
@@ -1390,16 +1511,133 @@ export const subscribeToEvents = (callback: (events: any[]) => void) => {
     
     console.log('🔄 Setting up events subscription with query:', q);
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       console.log('📊 Events snapshot received:', snapshot.size, 'docs');
-      const events = snapshot.docs.map(doc => {
-        const data = doc.data();
-        console.log('📄 Event doc:', doc.id, data);
-        return {
-          id: doc.id,
-          ...data
-        };
+      
+      // Get current user's college and role for filtering
+      let userCollege = '';
+      let userRole = 'user';
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const role = await getUserRole(user.uid);
+          userRole = role;
+          
+          // Admin users see all events, everyone else is filtered by college
+          if (role === 'admin') {
+            console.log('👑 Admin user - showing all events');
+          } else {
+            // Get college for leaders, students, and all other non-admin users
+            const userProfile = await getUserProfile(user.uid);
+            if (userProfile.profile?.institution) {
+              userCollege = userProfile.profile.institution.trim();
+              console.log('🔍 Filtering events for user college:', userCollege, 'Role:', role);
+              
+              // Log for debugging
+              if (!userCollege || userCollege === '') {
+                console.warn('⚠️ User college is empty after trim - user will not see any events');
+              }
+            } else {
+              console.warn('⚠️ User has no institution set - will not see any college-specific events');
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error getting user college/role for event filtering:', error);
+      }
+      
+      console.log('📊 Total events before filtering:', snapshot.size);
+      
+      const events = snapshot.docs
+        .map(doc => {
+          const data = doc.data();
+          console.log('📄 Event doc:', doc.id, data);
+          return {
+            id: doc.id,
+            ...data
+          };
+        })
+        .filter((event: any) => {
+          // Filter out soft-deleted events
+          if (event.deleted) return false;
+          
+          // Admin users see all events
+          if (userRole === 'admin') return true;
+          
+          // For non-admin users, require both event and user to have college set
+          // If user has no college, don't show any events (security)
+          if (!userCollege || userCollege.trim() === '') {
+            console.log('🚫 User has no college - hiding event:', event.title);
+            return false;
+          }
+          
+          // Normalize college names for comparison (trim and lowercase)
+          const eventCollege = event.college ? event.college.trim().toLowerCase() : '';
+          const normalizedUserCollege = userCollege.trim().toLowerCase();
+          
+          // If event has no college field, don't show it to regular users (security)
+          if (!eventCollege || eventCollege === '') {
+            console.log('🚫 Event has no college - hiding from user:', event.title);
+            return false;
+          }
+          
+          // Only show if colleges match exactly (case-insensitive)
+          if (eventCollege === normalizedUserCollege) {
+            console.log('✅ Event college matches user college:', event.title, eventCollege);
+            return true;
+          }
+          
+          // Don't show events from other colleges
+          console.log('🚫 Event college does not match:', event.title, 'Event college:', eventCollege, 'User college:', normalizedUserCollege);
+          return false;
+        });
+      
+      // Automatically update events that should be marked as history
+      // This ensures events are properly stored in history after 10 days
+      const updatePromises: Promise<void>[] = [];
+      
+      events.forEach((event: any) => {
+        if (event.date) {
+          const shouldBeHistory = isEventInHistory(event.date);
+          const isCurrentlyHistory = event.isHistory === true;
+          
+          // If event should be history but isn't marked, update it
+          if (shouldBeHistory && !isCurrentlyHistory) {
+            console.log(`🔄 Marking event ${event.id} as history (10+ days old)`);
+            updatePromises.push(
+              updateDoc(doc(db, 'events', event.id), {
+                isHistory: true,
+                updatedAt: new Date()
+              }).catch((error) => {
+                console.error(`❌ Error updating event ${event.id} to history:`, error);
+              })
+            );
+            // Update the event object immediately for this callback
+            event.isHistory = true;
+          }
+          // If event shouldn't be history but is marked, update it
+          else if (!shouldBeHistory && isCurrentlyHistory) {
+            console.log(`🔄 Marking event ${event.id} as upcoming (< 10 days old)`);
+            updatePromises.push(
+              updateDoc(doc(db, 'events', event.id), {
+                isHistory: false,
+                updatedAt: new Date()
+              }).catch((error) => {
+                console.error(`❌ Error updating event ${event.id} from history:`, error);
+              })
+            );
+            // Update the event object immediately for this callback
+            event.isHistory = false;
+          }
+        }
       });
+      
+      // Wait for all updates to complete (non-blocking)
+      if (updatePromises.length > 0) {
+        Promise.all(updatePromises).then(() => {
+          console.log(`✅ Updated ${updatePromises.length} events history status`);
+        });
+      }
       
       // Sort events by createdAt descending (most recent first)
       events.sort((a: any, b: any) => {
@@ -1423,7 +1661,8 @@ export const subscribeToEvents = (callback: (events: any[]) => void) => {
         return dateB.getTime() - dateA.getTime();
       });
       
-      console.log('✅ Processed and sorted events:', events);
+      console.log(`✅ Processed and sorted events: ${events.length} events after college filtering`);
+      console.log('📋 Filtered events:', events.map(e => ({ id: e.id, title: e.title, college: e.college })));
       callback(events);
     }, (error) => {
       console.error('❌ Error in events subscription:', error);
@@ -1505,14 +1744,16 @@ export const getAds = async () => {
     
     console.log('📊 Firebase getAds: Query snapshot size:', querySnapshot.size);
     
-    const ads = querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      console.log('📝 Firebase getAds: Processing ad:', doc.id, data);
-      return {
-        id: doc.id,
-        ...data
-      };
-    });
+    const ads = querySnapshot.docs
+      .map(doc => {
+        const data = doc.data();
+        console.log('📝 Firebase getAds: Processing ad:', doc.id, data);
+        return {
+          id: doc.id,
+          ...data
+        };
+      })
+      .filter((ad: any) => !ad.deleted); // Filter out soft-deleted ads
     
     console.log('✅ Firebase getAds: Returning ads:', ads);
     return { ads, error: null };
@@ -1555,10 +1796,9 @@ export const updateAd = async (adId: string, adData: any) => {
 
 export const deleteAd = async (adId: string) => {
   try {
-    const adRef = doc(db, 'ads', adId);
-    await deleteDoc(adRef);
-    
-    return { error: null };
+    // Use soft delete instead of hard delete
+    const result = await softDeleteItem('ads', adId);
+    return { error: result.success ? null : result.error };
   } catch (error: any) {
     console.error('Error deleting ad:', error);
     return { error: error.message };
@@ -1592,10 +1832,12 @@ export const getMagazineCovers = async () => {
     const q = query(coversRef, orderBy('order', 'asc'));
     const querySnapshot = await getDocs(q);
     
-    const covers = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const covers = querySnapshot.docs
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      .filter((cover: any) => !cover.deleted); // Filter out soft-deleted covers
     return { covers, error: null };
   } catch (error: any) {
     console.error('Error fetching magazine covers:', error);
@@ -1636,9 +1878,8 @@ export const updateMagazineCover = async (coverId: string, coverData: any) => {
 
 export const deleteMagazineCover = async (coverId: string) => {
   try {
-    const coverRef = doc(db, 'magazineCovers', coverId);
-    await deleteDoc(coverRef);
-    return { success: true, error: null };
+    // Use soft delete instead of hard delete
+    return await softDeleteItem('magazineCovers', coverId);
   } catch (error: any) {
     console.error('Error deleting magazine cover:', error);
     return { success: false, error: error.message };
@@ -1697,4 +1938,210 @@ export const subscribeToSession = (uid: string, onChange: (remoteSession: string
     const data = docSnap.data();
     onChange(data ? data.currentSessionId || null : null);
   });
+};
+
+// Recycle Bin Functions - Soft Delete System
+// Soft delete: Mark items as deleted instead of permanently deleting them
+export const softDeleteItem = async (collectionName: string, itemId: string) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('User must be authenticated to delete items');
+    }
+
+    const itemRef = doc(db, collectionName, itemId);
+    const itemDoc = await getDoc(itemRef);
+    
+    if (!itemDoc.exists()) {
+      throw new Error('Item not found');
+    }
+
+    const itemData = itemDoc.data();
+    
+    // Mark as deleted with timestamp
+    await updateDoc(itemRef, {
+      deleted: true,
+      deletedAt: new Date(),
+      deletedBy: user.uid,
+      active: false // Also set active to false if it exists
+    });
+
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error soft deleting item:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Get all deleted items from all collections
+export const getDeletedItems = async () => {
+  try {
+    const collectionsToCheck = [
+      'events',
+      'articles',
+      'sponsors',
+      'ads',
+      'resourceTabContent',
+      'promptTemplates',
+      'newsUpdates',
+      'aiTools',
+      'magazineCovers',
+      'freeCourses',
+      'recommendedBooks'
+    ];
+
+    const allDeletedItems: any[] = [];
+
+    for (const collectionName of collectionsToCheck) {
+      try {
+        const collectionRef = collection(db, collectionName);
+        const q = query(collectionRef, where('deleted', '==', true));
+        const snapshot = await getDocs(q);
+        
+        snapshot.docs.forEach((doc) => {
+          allDeletedItems.push({
+            id: doc.id,
+            collection: collectionName,
+            data: doc.data(),
+            deletedAt: doc.data().deletedAt,
+            deletedBy: doc.data().deletedBy
+          });
+        });
+      } catch (error) {
+        console.error(`Error fetching deleted items from ${collectionName}:`, error);
+        // Continue with other collections
+      }
+    }
+
+    // Sort by deletedAt date (most recent first)
+    allDeletedItems.sort((a, b) => {
+      let dateA: Date, dateB: Date;
+      
+      if (a.deletedAt) {
+        dateA = a.deletedAt.toDate ? a.deletedAt.toDate() : new Date(a.deletedAt);
+      } else {
+        dateA = new Date(0);
+      }
+      
+      if (b.deletedAt) {
+        dateB = b.deletedAt.toDate ? b.deletedAt.toDate() : new Date(b.deletedAt);
+      } else {
+        dateB = new Date(0);
+      }
+      
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    return allDeletedItems;
+  } catch (error: any) {
+    console.error('Error getting deleted items:', error);
+    return [];
+  }
+};
+
+// Restore a deleted item
+export const restoreDeletedItem = async (collectionName: string, itemId: string) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('User must be authenticated to restore items');
+    }
+
+    const itemRef = doc(db, collectionName, itemId);
+    const itemDoc = await getDoc(itemRef);
+    
+    if (!itemDoc.exists()) {
+      throw new Error('Item not found');
+    }
+
+    const itemData = itemDoc.data();
+    if (!itemData.deleted) {
+      throw new Error('Item is not deleted');
+    }
+
+    // Remove deleted flags and restore
+    await updateDoc(itemRef, {
+      deleted: false,
+      deletedAt: null,
+      deletedBy: null,
+      active: true, // Restore active status
+      restoredAt: new Date(),
+      restoredBy: user.uid
+    });
+
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error restoring item:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Permanently delete items older than 15 days
+export const permanentlyDeleteOldItems = async () => {
+  try {
+    const collectionsToCheck = [
+      'events',
+      'articles',
+      'sponsors',
+      'ads',
+      'resourceTabContent',
+      'promptTemplates',
+      'newsUpdates',
+      'aiTools',
+      'magazineCovers',
+      'freeCourses',
+      'recommendedBooks'
+    ];
+
+    const fifteenDaysAgo = new Date();
+    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+
+    let totalDeleted = 0;
+
+    for (const collectionName of collectionsToCheck) {
+      try {
+        const collectionRef = collection(db, collectionName);
+        // Get all deleted items and filter client-side (Firestore doesn't support range queries on timestamp fields easily)
+        const q = query(collectionRef, where('deleted', '==', true));
+        const snapshot = await getDocs(q);
+        
+        const itemsToDelete: any[] = [];
+        snapshot.docs.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (data.deletedAt) {
+            let deletedDate: Date;
+            if (data.deletedAt.toDate) {
+              deletedDate = data.deletedAt.toDate();
+            } else {
+              deletedDate = new Date(data.deletedAt);
+            }
+            
+            // Check if deleted more than 15 days ago
+            if (deletedDate <= fifteenDaysAgo) {
+              itemsToDelete.push(docSnap.ref);
+            }
+          }
+        });
+
+        if (itemsToDelete.length > 0) {
+          const batch = writeBatch(db);
+          itemsToDelete.forEach((ref) => {
+            batch.delete(ref);
+            totalDeleted++;
+          });
+          await batch.commit();
+          console.log(`✅ Permanently deleted ${itemsToDelete.length} items from ${collectionName}`);
+        }
+      } catch (error) {
+        console.error(`Error permanently deleting items from ${collectionName}:`, error);
+        // Continue with other collections
+      }
+    }
+
+    console.log(`✅ Total permanently deleted items: ${totalDeleted}`);
+    return { success: true, deletedCount: totalDeleted };
+  } catch (error: any) {
+    console.error('Error permanently deleting old items:', error);
+    return { success: false, error: error.message };
+  }
 };

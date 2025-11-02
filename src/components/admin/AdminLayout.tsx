@@ -12,7 +12,8 @@ import {
   MessageSquare,
   Calendar,
   Newspaper,
-  BookMarked
+  BookMarked,
+  Trash2
 } from 'lucide-react';
 import AdminDashboard from './AdminDashboard';
 import ArticlesManager from './ArticlesManager';
@@ -27,6 +28,7 @@ import EguideContentManager from './EguideContentManager';
 import LatestUpdatesManager from './LatestUpdatesManager';
 import PromptTemplatesManager from './PromptTemplatesManager';
 import MagazineCoversManager from './MagazineCoversManager';
+import RecycleBinManager from './RecycleBinManager';
 
 interface AdminLayoutProps {
   onLogout: () => void;
@@ -49,7 +51,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout, onBackToHome }) => 
     { id: 'resourceTabs', label: 'Resource Tabs', icon: BookOpen },
     { id: 'sidebarTabs', label: 'Sidebar Tabs', icon: LayoutDashboard },
     { id: 'magazineCovers', label: 'Magazine Covers', icon: BookMarked },
-    { id: 'users', label: 'Users', icon: Users }
+    { id: 'users', label: 'Users', icon: Users },
+    { id: 'recycleBin', label: 'Recycle Bin', icon: Trash2 }
   ];
 
   const renderContent = () => {
@@ -88,6 +91,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout, onBackToHome }) => 
         return <MagazineCoversManager />;
       case 'users':
         return <UsersManager />;
+      case 'recycleBin':
+        return <RecycleBinManager />;
       default:
         return <AdminDashboard onNavigate={setActiveTab} />;
     }

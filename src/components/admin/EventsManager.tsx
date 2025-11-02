@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Calendar, MapPin, User, Clock, Edit } from 'lucide-react';
+import { Trash2, Calendar, MapPin, User, Clock, Edit, History } from 'lucide-react';
 import { subscribeToEvents, deleteEvent, getUserRole } from '../../utils/firebase';
 
 interface Event {
@@ -21,6 +21,7 @@ const EventsManager: React.FC = () => {
   const [eventToDelete, setEventToDelete] = useState<{id: string, title: string} | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [creatorNames, setCreatorNames] = useState<{[key: string]: string}>({});
+  const [showEventHistory, setShowEventHistory] = useState(false);
 
   // Load events with real-time updates
   useEffect(() => {
@@ -157,6 +158,11 @@ const EventsManager: React.FC = () => {
     );
   }
 
+  // Filter events based on history/upcoming toggle using stored isHistory field
+  const filteredEvents = showEventHistory
+    ? events.filter((event) => event.isHistory === true)
+    : events.filter((event) => event.isHistory !== true);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -167,13 +173,40 @@ const EventsManager: React.FC = () => {
             Manage all events created by users and principals
           </p>
         </div>
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          Total Events: {events.length}
+        <div className="flex items-center space-x-4">
+          {/* History/Upcoming Toggle */}
+          <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+            <button
+              onClick={() => setShowEventHistory(false)}
+              className={`px-4 py-2 rounded-md transition-colors duration-200 font-medium text-sm ${
+                !showEventHistory
+                  ? 'bg-white dark:bg-gray-700 text-[#9b0101] dark:text-[#9b0101] shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              <Calendar className="w-4 h-4 inline mr-2" />
+              Upcoming
+            </button>
+            <button
+              onClick={() => setShowEventHistory(true)}
+              className={`px-4 py-2 rounded-md transition-colors duration-200 font-medium text-sm ${
+                showEventHistory
+                  ? 'bg-white dark:bg-gray-700 text-[#9b0101] dark:text-[#9b0101] shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              <History className="w-4 h-4 inline mr-2" />
+              History
+            </button>
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            {showEventHistory ? 'History Events' : 'Upcoming Events'}: {filteredEvents.length}
+          </div>
         </div>
       </div>
 
       {/* Events List */}
-      {events.length === 0 ? (
+      {filteredEvents.length === 0 ? (
         <div className="text-center py-12">
           <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Events Found</h3>
@@ -203,7 +236,7 @@ const EventsManager: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {events.map((event) => (
+                {filteredEvents.map((event) => (
                   <tr key={event.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td className="px-6 py-4">
                       <div className="flex items-start space-x-3">

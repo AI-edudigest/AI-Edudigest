@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Calendar, Book, Lightbulb, GraduationCap, ExternalLink, Clock, MapPin, Star, Download, ChevronLeft, Check, Plus, X, Trash2, BookOpen, Edit } from 'lucide-react';
+import { Zap, Calendar, Book, Lightbulb, GraduationCap, ExternalLink, Clock, MapPin, Star, Download, ChevronLeft, Check, Plus, X, Trash2, BookOpen, Edit, History } from 'lucide-react';
 import { BackButtonProps } from '../../types/common';
 import { getResourceTabs, getResourceTabContent, addEvent, updateEvent, deleteEvent, subscribeToEvents } from '../../utils/firebase';
 import FeedbackPage from './FeedbackPage';
@@ -16,6 +16,9 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
   const [copiedTemplates, setCopiedTemplates] = useState<Set<string>>(new Set());
   const [dynamicItems, setDynamicItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // History/Upcoming toggle for events
+  const [showEventHistory, setShowEventHistory] = useState(false);
   
   // Event creation/editing modal state
   const [showEventModal, setShowEventModal] = useState(false);
@@ -481,6 +484,18 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
     // For prompt templates, use dynamic items (organized by categories)
     displayCategories = dynamicItems || [];
     displayItems = [];
+  } else if (resourceType === 'upcomingEvents') {
+    // For events, filter based on history/upcoming toggle using stored isHistory field
+    const allEvents = [...(dynamicItems || []), ...(content.items || [])];
+    if (showEventHistory) {
+      // Show only history events (marked as isHistory: true in database)
+      displayItems = allEvents.filter((event: any) => event.isHistory === true);
+      displayCategories = [];
+    } else {
+      // Show only upcoming events (not in history - isHistory is false or undefined)
+      displayItems = allEvents.filter((event: any) => event.isHistory !== true);
+      displayCategories = [];
+    }
   } else {
     // For other resource types, combine dynamic items with hardcoded items
     displayItems = [...(dynamicItems || []), ...(content.items || [])];
@@ -574,7 +589,7 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
                     {item.type}
                   </span>
                 )}
-                {/* Edit and Delete buttons - visible only for leaders and admins */}
+                {/* Edit and Delete buttons - visible only for leaders and admins in both Upcoming and History tabs */}
                 {resourceType === 'upcomingEvents' && (userRole === 'leaders' || userRole === 'admin') && item.id && (
                   <div className="flex items-center space-x-1">
                     <button
@@ -836,16 +851,46 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
             </div>
           </div>
           
-          {/* Add Event Button - Only show for leaders and admin on upcoming events page */}
-          {resourceType === 'upcomingEvents' && (userRole === 'leaders' || userRole === 'admin') && (
-            <button
-              onClick={openEventModal}
-              className="flex items-center space-x-2 bg-[#9b0101] hover:bg-[#7a0101] text-white px-4 py-2 rounded-lg transition-colors duration-200 font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Event</span>
-            </button>
-          )}
+          <div className="flex items-center space-x-3">
+            {/* History/Upcoming Toggle - Only show for events */}
+            {resourceType === 'upcomingEvents' && (
+              <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                <button
+                  onClick={() => setShowEventHistory(false)}
+                  className={`px-4 py-2 rounded-md transition-colors duration-200 font-medium text-sm ${
+                    !showEventHistory
+                      ? 'bg-white dark:bg-gray-700 text-[#9b0101] dark:text-[#9b0101] shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <Calendar className="w-4 h-4 inline mr-2" />
+                  Upcoming
+                </button>
+                <button
+                  onClick={() => setShowEventHistory(true)}
+                  className={`px-4 py-2 rounded-md transition-colors duration-200 font-medium text-sm ${
+                    showEventHistory
+                      ? 'bg-white dark:bg-gray-700 text-[#9b0101] dark:text-[#9b0101] shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <History className="w-4 h-4 inline mr-2" />
+                  History
+                </button>
+              </div>
+            )}
+            
+            {/* Add Event Button - Only show for leaders and admin on upcoming events page */}
+            {resourceType === 'upcomingEvents' && (userRole === 'leaders' || userRole === 'admin') && (
+              <button
+                onClick={openEventModal}
+                className="flex items-center space-x-2 bg-[#9b0101] hover:bg-[#7a0101] text-white px-4 py-2 rounded-lg transition-colors duration-200 font-medium"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Event</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
