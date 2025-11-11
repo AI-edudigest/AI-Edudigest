@@ -22,6 +22,7 @@ interface Notification {
 }
 
 interface TopBarProps {
+  activeSection?: string;
   onLogout?: () => void;
   pageInfo?: PageInfo | null;
   isAdmin?: boolean;
@@ -29,7 +30,7 @@ interface TopBarProps {
   currentTopicName?: string | null;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ onLogout, pageInfo, isAdmin, onAdminPanelToggle, currentTopicName }) => {
+const TopBar: React.FC<TopBarProps> = ({ activeSection, onLogout, pageInfo, isAdmin, onAdminPanelToggle, currentTopicName }) => {
   const { searchQuery, setSearchQuery, performSearch } = useSearch();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -219,8 +220,8 @@ const TopBar: React.FC<TopBarProps> = ({ onLogout, pageInfo, isAdmin, onAdminPan
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm shadow-lg border-b border-gray-200 dark:border-gray-700 px-6 py-4 transition-all duration-200 relative">
-      <div className="flex items-center justify-between">
+    <header className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm shadow-lg border-b border-gray-200 dark:border-gray-700 px-8 py-4 transition-all duration-200 relative flex items-center h-[6rem]">
+      <div className="w-full flex items-center justify-between">
         <div className="flex items-center space-x-4">
           {currentTopicName && (
             <div className="flex items-center space-x-3">
@@ -238,25 +239,27 @@ const TopBar: React.FC<TopBarProps> = ({ onLogout, pageInfo, isAdmin, onAdminPan
             </div>
           )}
           {!currentTopicName && pageInfo && (
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-[#9b0101] rounded-lg flex items-center justify-center">
-                {React.createElement(getIconComponent(pageInfo.icon), { className: "w-6 h-6 text-white" })}
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {pageInfo.title}
-                </h2>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                  {pageInfo.subtitle}
-                </p>
-              </div>
-            </div>
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-[#9b0101] rounded-lg flex items-center justify-center">
+            {React.createElement(getIconComponent(pageInfo.icon), { className: "w-5 h-5 text-white" })}
+          </div>
+          <div className="flex flex-col justify-center">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-none">
+              {pageInfo.title}
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 text-xs leading-tight mt-1">
+              {pageInfo.subtitle}
+            </p>
+          </div>
+        </div>
           )}
         </div>
         
         {/* Ads Carousel Section */}
         <div className="flex-1 flex justify-center px-4">
-          <AdsCarousel institutionName={userProfile?.institution} />
+          <div className="max-w-[280px] w-full">
+            <AdsCarousel institutionName={userProfile?.institution} />
+          </div>
         </div>
 
         <div className="flex items-center space-x-4">

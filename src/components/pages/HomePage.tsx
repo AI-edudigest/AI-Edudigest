@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Clock, Layers, Zap, BookOpen, Users, X, Plus } from 'lucide-react';
 import { BackButtonProps } from '../../types/common';
 import { getSponsors, subscribeToArticles } from '../../utils/firebase';
-import SponsorsCarousel from '../SponsorsCarousel';
 import ArticleTTS from '../common/ArticleTTS';
 
 interface HomePageProps extends BackButtonProps {
@@ -170,7 +169,7 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPa
 
       {/* Latest Articles - Sticky Header */}
       <div className="space-y-4">
-        <div className="sticky top-0 z-30 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 -mx-6 px-6 py-4">
+        <div className="sticky top-0 z-30 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 -mx-6 px-6 py-4 shadow-sm">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">Latest Articles</h3>
             {isAdmin && (
@@ -269,11 +268,6 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPa
           ))}
         </div>
       </div>
-      {/* Our Sponsors - Animated Carousel Footer */}
-      <div className="fixed bottom-0 left-0 right-0 z-40">
-        <SponsorsCarousel />
-      </div> 
-
       {/* Article Popup Modal */}
       {selectedArticle && (
         <div 

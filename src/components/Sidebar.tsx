@@ -145,31 +145,31 @@ const Sidebar: React.FC<SidebarProps> = ({
     <div className={`${isCollapsed ? 'w-16' : 'w-72'} bg-white dark:bg-gray-900 shadow-lg border-r border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out flex flex-col h-full`}>
       {/* Fixed Logo and Branding - Always at top */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-        <div className="p-4 flex items-center justify-between">
-        {!isCollapsed ? (
-          <div className="flex items-center space-x-3">
+        <div className={`h-[6rem] flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-start px-4 space-x-3'}`}>
+          {!isCollapsed ? (
+            <>
+              <img 
+                src="/AI-Edu app logo  .png" 
+                alt="AI-EduApp Logo" 
+                className="w-12 h-12"
+              />
+              <div>
+                <h1 className="text-xl font-bold" style={{ fontFamily: 'Georgia, \"Times New Roman\", serif' }}>
+                  <span style={{ color: '#000000' }}>AI-Edu</span>
+                  <span style={{ color: '#9b0101' }}>App</span>
+                </h1>
+                <p className="text-xs font-bold text-gray-600 dark:text-gray-400 mt-0.5">
+                  {institutionName ? `AI for ${institutionName}` : 'AI for Colleges'}
+                </p>
+              </div>
+            </>
+          ) : (
             <img 
               src="/AI-Edu app logo  .png" 
               alt="AI-EduApp Logo" 
               className="w-12 h-12"
             />
-            <div>
-              <h1 className="text-xl font-bold" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                <span style={{ color: '#000000' }}>AI-Edu</span>
-                <span style={{ color: '#9b0101' }}>App</span>
-              </h1>
-              <p className="text-xs font-bold text-gray-600 dark:text-gray-400 mt-0.5">
-                {institutionName ? `AI for ${institutionName}` : 'AI for Colleges'}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <img 
-            src="/AI-Edu app logo  .png" 
-            alt="AI-EduApp Logo" 
-            className="w-32 h-32 mx-auto"
-          />
-        )}
+          )}
         </div>
       </div>
 

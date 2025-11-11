@@ -24,6 +24,7 @@ import SignUpPage from './components/pages/SignUpPage';
 import AdminLayout from './components/admin/AdminLayout';
 import SidebarTabContent from './components/pages/SidebarTabContent';
 import ProfileCompletionModal from './components/ProfileCompletionModal';
+import SponsorsCarousel from './components/SponsorsCarousel';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -432,7 +433,8 @@ function App() {
 
   return (
     <SearchProvider>
-      <div className="min-h-screen bg-gray-50 flex transition-colors duration-200">
+      <div className="min-h-screen bg-gray-50 flex flex-col transition-colors duration-200">
+        <div className="flex flex-1">
         {/* Fixed Sidebar */}
         <div className="fixed left-0 top-0 h-full z-40">
           <Sidebar
@@ -467,7 +469,7 @@ function App() {
 
             {/* Right Sidebar - Only show on larger screens and when not collapsed */}
             {!isCollapsed && (
-              <div className="hidden xl:block w-80 flex-shrink-0 fixed right-0 top-24 h-[calc(100vh-6rem)] z-30">
+              <div className="hidden xl:block w-80 flex-shrink-0 fixed right-0 top-[6rem] bottom-0 z-40 pr-4 overflow-hidden">
                 <RightSidebar 
                   onResourceClick={handleResourceClick} 
                   onMagazineClick={() => handleResourceClick('eguide')}
@@ -494,6 +496,11 @@ function App() {
             }}
           />
         )}
+        </div>
+        {/* Global Sponsors Footer */}
+        <div className="border-t border-gray-200 bg-white sticky bottom-0 z-30">
+          <SponsorsCarousel />
+        </div>
       </div>
     </SearchProvider>
   );
