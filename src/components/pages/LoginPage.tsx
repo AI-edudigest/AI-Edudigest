@@ -133,7 +133,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onShowSignUp }) =
           <div className="text-center mb-8 animate-in slide-in-from-top-10 duration-700 delay-200">
             <div className="flex items-center justify-center mb-4">
               <img 
-                src="/AI-Edu app logo  .png" 
+                src="/AI-TODAY-logo.png" 
                 alt="AI-EduApp Logo" 
                 className="w-24 h-24 animate-in zoom-in-50 duration-700 delay-300"
               />
@@ -142,8 +142,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onShowSignUp }) =
               className="text-4xl font-bold mb-2 animate-in slide-in-from-top-10 duration-700 delay-400"
               style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
             >
-              <span style={{ color: '#000000' }}>AI-Edu</span>
-              <span style={{ color: '#9b0101' }}>App</span>
+              <span style={{ color: '#000000' }}>AI-</span>
+              <span style={{ color: '#9b0101' }}>TODAY</span>
             </h1>
             <p className="text-gray-600 text-lg animate-in fade-in-50 duration-700 delay-500">
               AI for Colleges

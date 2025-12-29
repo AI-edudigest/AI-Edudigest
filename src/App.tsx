@@ -412,8 +412,8 @@ function App() {
     
     return (
       <SimpleWelcome
-        appName="AI-EduApp"
-        logoSrc="/AI-Edu app logo  .png"
+        appName="AI-TODAY"
+        logoSrc="/AI-TODAY-logo.png"
         mode={welcomeMode}
         durationMs={duration}
         onFinish={handleSplashFinish}

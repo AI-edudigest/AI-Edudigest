@@ -149,14 +149,14 @@ const Sidebar: React.FC<SidebarProps> = ({
           {!isCollapsed ? (
             <>
               <img 
-                src="/AI-Edu app logo  .png" 
+                src="/AI-TODAY-logo.png" 
                 alt="AI-EduApp Logo" 
                 className="w-12 h-12"
               />
               <div>
                 <h1 className="text-xl font-bold" style={{ fontFamily: 'Georgia, \"Times New Roman\", serif' }}>
-                  <span style={{ color: '#000000' }}>AI-Edu</span>
-                  <span style={{ color: '#9b0101' }}>App</span>
+                  <span style={{ color: '#000000' }}>AI-</span>
+                  <span style={{ color: '#9b0101' }}>TODAY</span>
                 </h1>
                 <p className="text-xs font-bold text-gray-600 dark:text-gray-400 mt-0.5">
                   {institutionName ? `AI for ${institutionName}` : 'AI for Colleges'}
