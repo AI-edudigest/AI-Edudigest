@@ -8,23 +8,102 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
+    // Helper function to check if user is salesman
+    function isSalesman() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'salesman' &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.active == true;
+    }
+    
+    // Helper function to check if user is college_admin (support both formats for backward compatibility)
+    function isCollegeAdmin() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'college_admin' ||
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'college-admin');
+    }
+    
+    // Helper function to get current user's collegeId
+    function getCollegeId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.institutionId;
+    }
+    
+    // Helper function to get current user role
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
     // Users can read/write their own user document
     // Admins can read all users and update/delete any user
+    // Salesmen can read users they created (college admins)
+    // College admins can read/write users of their own college
     match /users/{userId} {
       // Users can always read their own document
       // Admins can read any user document
+      // Salesmen can read users they created
+      // College admins can read users of their own college
       allow read: if request.auth != null && (
         request.auth.uid == userId || 
-        isAdmin()
+        isAdmin() ||
+        (isSalesman() && resource.data.createdBySalesman == request.auth.uid) ||
+        (isCollegeAdmin() && resource.data.institutionId == getCollegeId())
       );
       // Anyone authenticated can create their own user document
-      allow create: if request.auth != null;
+      // Salesmen can create college_admin users
+      // College admins can create users (leader, educator) for their college
+      allow create: if request.auth != null && (
+        request.auth.uid == userId ||
+        (isSalesman() && request.resource.data.role == 'college_admin' && request.resource.data.createdBySalesman == request.auth.uid) ||
+        (isCollegeAdmin() && 
+         (request.resource.data.role == 'leader' || request.resource.data.role == 'educator') &&
+         request.resource.data.institutionId == getCollegeId())
+      );
       // Users can write to their own document
       allow write: if request.auth != null && request.auth.uid == userId;
       // Admins can update any user (for role changes)
-      allow update: if request.auth != null && isAdmin();
+      allow update: if request.auth != null && (
+        isAdmin() ||
+        (isCollegeAdmin() && 
+         resource.data.institutionId == getCollegeId() &&
+         request.resource.data.institutionId == getCollegeId() &&
+         (request.resource.data.role == 'leader' || request.resource.data.role == 'educator'))
+      );
       // Admins can delete any user
-      allow delete: if request.auth != null && isAdmin();
+      // Salesmen can delete college_admin users they created
+      // College admins can delete users of their own college
+      allow delete: if request.auth != null && (
+        isAdmin() ||
+        (isSalesman() && resource.data.role == 'college_admin' && resource.data.createdBySalesman == request.auth.uid) ||
+        (isCollegeAdmin() && resource.data.institutionId == getCollegeId())
+      );
+    }
+    
+    // Colleges collection - only salesmen can create/read their own colleges
+    // College admins can read their own college
+    match /colleges/{collegeId} {
+      // Salesmen can read colleges they created
+      // College admins can read their own college (where collegeId matches their institutionId)
+      // For list queries, Firestore will filter by the where clause
+      // For individual reads, we check the resource data
+      allow read: if request.auth != null && (
+        isAdmin() ||
+        (isSalesman() && resource.data.createdBySalesman == request.auth.uid) ||
+        (isCollegeAdmin() && collegeId == getCollegeId())
+      );
+      // Only salesmen can create colleges
+      allow create: if request.auth != null && (
+        isAdmin() ||
+        (isSalesman() && request.resource.data.createdBySalesman == request.auth.uid)
+      );
+      // Only admins can update colleges (salesmen and college admins cannot update)
+      // This prevents college_admin from changing plan, limit, or college name
+      allow update: if request.auth != null && isAdmin();
+      // Admins and salesmen can delete colleges (salesmen can only delete their own)
+      allow delete: if request.auth != null && (
+        isAdmin() ||
+        (isSalesman() && resource.data.createdBySalesman == request.auth.uid)
+      );
     }
     
     // Allow authenticated users to read articles

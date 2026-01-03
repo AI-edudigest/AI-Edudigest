@@ -7,10 +7,12 @@ import ArticleTTS from '../common/ArticleTTS';
 interface HomePageProps extends BackButtonProps {
   onResourceClick?: (resource: string) => void;
   isAdmin?: boolean;
+  isCollegeAdmin?: boolean;
   onAdminPanelToggle?: () => void;
+  onCollegeDashboardClick?: () => void;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPanelToggle }) => {
+const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, isCollegeAdmin, onAdminPanelToggle, onCollegeDashboardClick }) => {
   const [articles, setArticles] = useState<any[]>([]);
   const [sponsors, setSponsors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +116,143 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, onAdminPa
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9b0101]"></div>
+      </div>
+    );
+  }
+
+  // If college admin, show College User Dashboard card and latest articles
+  if (isCollegeAdmin) {
+    return (
+      <div className="space-y-6 animate-in fade-in-50 duration-500 pb-20">
+        {/* College User Dashboard Card */}
+        <div 
+          onClick={onCollegeDashboardClick}
+          className="bg-gradient-to-r from-[#9b0101] to-[#7a0101] rounded-lg p-8 text-white cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
+        >
+          <div className="flex items-center justify-center">
+            <div className="text-center">
+              <Users className="w-16 h-16 mx-auto mb-4 text-white" />
+              <h3 className="text-2xl font-bold mb-2">College User Dashboard</h3>
+              <p className="text-white/80">Add and manage users for your college</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Latest Articles */}
+        <div className="space-y-4">
+          <div className="sticky top-0 z-30 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 -mx-6 px-6 py-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Latest Articles</h3>
+            </div>
+          </div>
+          
+          {articles.length > 0 ? (
+            <div className="space-y-6">
+              {articles.slice(0, 6).map((article: any) => (
+                <div 
+                  key={article.id} 
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all duration-200 hover:-translate-y-1 cursor-pointer relative"
+                  onClick={() => setSelectedArticle(article)}
+                >
+                  {/* TTS Button - Top Right Corner */}
+                  <div className="absolute top-4 right-4 z-10">
+                    <ArticleTTS
+                      articleText={article.excerpt || article.content?.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() || ''}
+                      articleTitle={article.title}
+                      articleId={article.id}
+                      isActive={playingArticleId === article.id}
+                      onPlayStateChange={handleTTSPlayStateChange}
+                      className="transition-opacity duration-200"
+                    />
+                  </div>
+                  
+                  <div className="flex items-start justify-between pr-12">
+                    <div className="flex-1">
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+                        {article.title}
+                      </h3>
+                      {(article.excerpt || article.content) && (
+                        <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+                          {article.excerpt || (article.content ? article.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').substring(0, 150) + '...' : '')}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                        <span className="font-medium">By {article.author}</span>
+                        <span>
+                          {article.createdAt?.toDate?.()?.toLocaleDateString() || 'Recent'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8 text-center">
+              <BookOpen className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Articles Yet</h4>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Check back soon for the latest AI education articles.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Article Popup Modal */}
+        {selectedArticle && (
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
+            onClick={() => setSelectedArticle(null)}
+          >
+            <div 
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 flex items-start justify-between">
+                <div className="flex-1 pr-4">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                    {selectedArticle.title}
+                  </h2>
+                  <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                    <span className="font-medium">By {selectedArticle.author}</span>
+                    <span>
+                      {selectedArticle.createdAt?.toDate?.()?.toLocaleDateString() || 'Recent'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  {/* TTS Button for Modal */}
+                  <ArticleTTS
+                    articleText={selectedArticle.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}
+                    articleTitle={selectedArticle.title}
+                    articleId={`modal-${selectedArticle.id}`}
+                    isActive={playingArticleId === `modal-${selectedArticle.id}`}
+                    onPlayStateChange={handleTTSPlayStateChange}
+                    className="transition-opacity duration-200"
+                  />
+                  <button
+                    onClick={() => setSelectedArticle(null)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6">
+                <div className="prose prose-lg max-w-none">
+                  <div 
+                    className="leading-relaxed"
+                    style={{ color: '#000000' }}
+                    dangerouslySetInnerHTML={{ __html: selectedArticle.content }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

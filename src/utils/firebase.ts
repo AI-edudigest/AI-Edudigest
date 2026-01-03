@@ -124,7 +124,7 @@ export const signUp = async (email: string, password: string, userData?: any) =>
     if (userData) {
       await setDoc(doc(db, 'users', user.uid), {
         email: user.email,
-        role: userData.role || 'user',
+        role: 'user', // Always set to 'user', ignore any role from userData
         createdAt: new Date(),
         ...userData
       });
@@ -370,7 +370,8 @@ export const getUserProfile = async (userId: string) => {
           lastName: data.lastName || '',
           email: data.email || '',
           role: data.role || 'user',
-          institution: data.institution || ''
+          institution: data.institution || '',
+          active: data.active !== undefined ? data.active : true // Default to true if not set
         },
         error: null
       };
@@ -408,9 +409,26 @@ export const searchInstitutions = async (term: string, limitCount: number = 10) 
   }
 };
 
-export const updateUserRole = async (userId: string, role: string) => {
+export const updateUserRole = async (userId: string, role: string, active?: boolean) => {
   try {
-    await updateDoc(doc(db, 'users', userId), { role });
+    const updateData: any = { role };
+    // If role is salesman and active is provided, update it
+    if (role === 'salesman' && active !== undefined) {
+      updateData.active = active;
+    } else if (role === 'salesman' && active === undefined) {
+      // If setting to salesman but active not provided, default to false (needs activation)
+      updateData.active = false;
+    }
+    await updateDoc(doc(db, 'users', userId), updateData);
+    return { success: true, error: null };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateUserActive = async (userId: string, active: boolean) => {
+  try {
+    await updateDoc(doc(db, 'users', userId), { active });
     return { success: true, error: null };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -2142,6 +2160,770 @@ export const permanentlyDeleteOldItems = async () => {
     return { success: true, deletedCount: totalDeleted };
   } catch (error: any) {
     console.error('Error permanently deleting old items:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// ==================== SALESMAN FUNCTIONS ====================
+
+// Colleges Management Functions
+export const addCollege = async (collegeData: {
+  name: string;
+  shortName?: string;
+  type?: string;
+  affiliation?: string;
+  location?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  website?: string;
+}, salesmanUid: string) => {
+  try {
+    const user = auth.currentUser;
+    if (!user || user.uid !== salesmanUid) {
+      throw new Error('Unauthorized: Only the creating salesman can add colleges');
+    }
+
+    const collegeDoc = {
+      name: collegeData.name,
+      shortName: collegeData.shortName || '',
+      type: collegeData.type || '',
+      affiliation: collegeData.affiliation || '',
+      location: collegeData.location || '',
+      city: collegeData.city || '',
+      state: collegeData.state || '',
+      pincode: collegeData.pincode || '',
+      website: collegeData.website || '',
+      createdBySalesman: salesmanUid,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const docRef = await addDoc(collection(db, 'colleges'), collegeDoc);
+    return { success: true, collegeId: docRef.id, error: null };
+  } catch (error: any) {
+    console.error('Error adding college:', error);
+    return { success: false, collegeId: null, error: error.message };
+  }
+};
+
+export const deleteCollege = async (collegeId: string, salesmanUid: string) => {
+  try {
+    const user = auth.currentUser;
+    if (!user || user.uid !== salesmanUid) {
+      throw new Error('Unauthorized: Only the creating salesman can delete colleges');
+    }
+
+    // Verify college belongs to salesman
+    const collegeDoc = await getDoc(doc(db, 'colleges', collegeId));
+    if (!collegeDoc.exists()) {
+      throw new Error('College not found');
+    }
+    const collegeData = collegeDoc.data();
+    if (collegeData.createdBySalesman !== salesmanUid) {
+      throw new Error('Unauthorized: College does not belong to this salesman');
+    }
+
+    // Delete college document
+    await deleteDoc(doc(db, 'colleges', collegeId));
+    
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error deleting college:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getCollegesBySalesman = async (salesmanUid: string) => {
+  try {
+    const collegesRef = collection(db, 'colleges');
+    // Try with orderBy first, fallback to just where if index is missing
+    let snapshot;
+    try {
+      const q = query(collegesRef, where('createdBySalesman', '==', salesmanUid), orderBy('createdAt', 'desc'));
+      snapshot = await getDocs(q);
+    } catch (indexError: any) {
+      // If index error, try without orderBy
+      if (indexError.code === 'failed-precondition' || indexError.message?.includes('index')) {
+        console.warn('Composite index missing, fetching without orderBy:', indexError.message);
+        const q = query(collegesRef, where('createdBySalesman', '==', salesmanUid));
+        snapshot = await getDocs(q);
+        // Sort manually
+        const docs = snapshot.docs.sort((a, b) => {
+          const aTime = a.data().createdAt?.toDate?.() || new Date(0);
+          const bTime = b.data().createdAt?.toDate?.() || new Date(0);
+          return bTime.getTime() - aTime.getTime();
+        });
+        snapshot = { docs } as any;
+      } else {
+        throw indexError;
+      }
+    }
+    
+    const colleges = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    return { colleges, error: null };
+  } catch (error: any) {
+    console.error('Error getting colleges:', error);
+    return { colleges: [], error: error.message };
+  }
+};
+
+// College Admin Management Functions
+export const addCollegeAdmin = async (adminData: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  collegeId: string;
+  collegeName: string;
+  password: string;
+}, salesmanUid: string) => {
+  try {
+    const user = auth.currentUser;
+    if (!user || user.uid !== salesmanUid) {
+      throw new Error('Unauthorized: Only the creating salesman can add college admins');
+    }
+
+    // Verify that the college belongs to this salesman
+    const collegeDoc = await getDoc(doc(db, 'colleges', adminData.collegeId));
+    if (!collegeDoc.exists()) {
+      throw new Error('College not found');
+    }
+    const collegeData = collegeDoc.data();
+    if (collegeData.createdBySalesman !== salesmanUid) {
+      throw new Error('Unauthorized: College does not belong to this salesman');
+    }
+
+    // Create auth user
+    const userCredential = await createUserWithEmailAndPassword(auth, adminData.email, adminData.password);
+    const newUser = userCredential.user;
+
+    // Create user document in Firestore
+    await setDoc(doc(db, 'users', newUser.uid), {
+      email: adminData.email,
+      firstName: adminData.firstName,
+      lastName: adminData.lastName,
+      role: 'college_admin',
+      institution: adminData.collegeName,
+      institutionId: adminData.collegeId,
+      createdBySalesman: salesmanUid,
+      createdAt: new Date(),
+      active: true
+    });
+
+    return { success: true, userId: newUser.uid, error: null };
+  } catch (error: any) {
+    console.error('Error adding college admin:', error);
+    return { success: false, userId: null, error: error.message };
+  }
+};
+
+export const getCollegeAdminsBySalesman = async (salesmanUid: string) => {
+  try {
+    const usersRef = collection(db, 'users');
+    const q = query(
+      usersRef,
+      where('role', '==', 'college_admin'),
+      where('createdBySalesman', '==', salesmanUid)
+    );
+    const snapshot = await getDocs(q);
+    
+    const admins = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    return { admins, error: null };
+  } catch (error: any) {
+    console.error('Error getting college admins:', error);
+    return { admins: [], error: error.message };
+  }
+};
+
+export const getCollegeAdminsByCollege = async (collegeId: string, salesmanUid: string) => {
+  try {
+    // Verify college belongs to salesman
+    const collegeDoc = await getDoc(doc(db, 'colleges', collegeId));
+    if (!collegeDoc.exists()) {
+      throw new Error('College not found');
+    }
+    const collegeData = collegeDoc.data();
+    if (collegeData.createdBySalesman !== salesmanUid) {
+      throw new Error('Unauthorized: College does not belong to this salesman');
+    }
+
+    const usersRef = collection(db, 'users');
+    const q = query(
+      usersRef,
+      where('role', '==', 'college_admin'),
+      where('institutionId', '==', collegeId)
+    );
+    const snapshot = await getDocs(q);
+    
+    const admins = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    return { admins, error: null };
+  } catch (error: any) {
+    console.error('Error getting college admins:', error);
+    return { admins: [], error: error.message };
+  }
+};
+
+export const deleteCollegeAdmin = async (adminId: string, salesmanUid: string) => {
+  try {
+    const user = auth.currentUser;
+    if (!user || user.uid !== salesmanUid) {
+      throw new Error('Unauthorized');
+    }
+
+    // Verify admin belongs to this salesman
+    const adminDoc = await getDoc(doc(db, 'users', adminId));
+    if (!adminDoc.exists()) {
+      throw new Error('Admin not found');
+    }
+    const adminData = adminDoc.data();
+    if ((adminData.role !== 'college_admin' && adminData.role !== 'college-admin') || adminData.createdBySalesman !== salesmanUid) {
+      throw new Error('Unauthorized: Admin does not belong to this salesman');
+    }
+
+    // Delete user document
+    await deleteDoc(doc(db, 'users', adminId));
+    
+    // Note: Firebase Auth user deletion should be handled server-side or by admin
+    // For now, we just remove the Firestore document
+    
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error deleting college admin:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Get college-wise user statistics (read-only)
+export const getCollegeUserStats = async (collegeId: string, salesmanUid: string) => {
+  try {
+    // Verify college belongs to salesman
+    const collegeDoc = await getDoc(doc(db, 'colleges', collegeId));
+    if (!collegeDoc.exists()) {
+      throw new Error('College not found');
+    }
+    const collegeData = collegeDoc.data();
+    if (collegeData.createdBySalesman !== salesmanUid) {
+      throw new Error('Unauthorized: College does not belong to this salesman');
+    }
+
+    const usersRef = collection(db, 'users');
+    // Filter by both institutionId and createdBySalesman to match security rules
+    const q = query(
+      usersRef, 
+      where('institutionId', '==', collegeId),
+      where('createdBySalesman', '==', salesmanUid)
+    );
+    const snapshot = await getDocs(q);
+    
+    const stats = {
+      leaders: 0,
+      educators: 0,
+      faculty: 0,
+      students: 0,
+      total: 0
+    };
+
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      const role = data.role || 'user';
+      stats.total++;
+      
+      if (role === 'leader' || role === 'leaders') stats.leaders++;
+      else if (role === 'educator' || role === 'educators') stats.educators++;
+      else if (role === 'faculty') stats.faculty++;
+      else if (role === 'student') stats.students++;
+    });
+    
+    return { stats, error: null };
+  } catch (error: any) {
+    console.error('Error getting college user stats:', error);
+    return { stats: null, error: error.message };
+  }
+};
+
+// Real-time subscription for college user stats
+export const subscribeToCollegeUserStats = (
+  collegeId: string, 
+  salesmanUid: string, 
+  callback: (stats: { leaders: number; educators: number; faculty: number; students: number; total: number } | null) => void
+) => {
+  try {
+    const usersRef = collection(db, 'users');
+    // Filter by both institutionId and createdBySalesman to match security rules
+    const q = query(
+      usersRef, 
+      where('institutionId', '==', collegeId),
+      where('createdBySalesman', '==', salesmanUid)
+    );
+    
+    return onSnapshot(q, (snapshot) => {
+      console.log(`📊 Real-time update for college ${collegeId}: ${snapshot.size} users`);
+      const stats = {
+        leaders: 0,
+        educators: 0,
+        faculty: 0,
+        students: 0,
+        total: 0
+      };
+
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const role = data.role || 'user';
+        stats.total++;
+        
+        if (role === 'leader' || role === 'leaders') stats.leaders++;
+        else if (role === 'educator' || role === 'educators') stats.educators++;
+        else if (role === 'faculty') stats.faculty++;
+        else if (role === 'student') stats.students++;
+      });
+
+      console.log(`📈 Updated stats for college ${collegeId}:`, stats);
+      callback(stats);
+    }, (error) => {
+      console.error('Error in college user stats subscription:', error);
+      callback(null);
+    });
+  } catch (error: any) {
+    console.error('Error setting up college user stats subscription:', error);
+    callback(null);
+    return () => {}; // Return empty unsubscribe function
+  }
+};
+
+// College Admin User Management Functions
+export const getCollegeUsersByCollegeAdmin = async (collegeAdminUid: string) => {
+  try {
+    // Get college admin's profile to get their collegeId
+    const adminDoc = await getDoc(doc(db, 'users', collegeAdminUid));
+    if (!adminDoc.exists()) {
+      throw new Error('College admin not found');
+    }
+    const adminData = adminDoc.data();
+    if (adminData.role !== 'college_admin' && adminData.role !== 'college-admin') {
+      throw new Error('Unauthorized: User is not a college admin');
+    }
+    const collegeId = adminData.institutionId;
+    if (!collegeId) {
+      throw new Error('College ID not found');
+    }
+
+    // Get users (leader, educator) for this college
+    const usersRef = collection(db, 'users');
+    const q = query(
+      usersRef,
+      where('institutionId', '==', collegeId),
+      where('role', 'in', ['leader', 'educator'])
+    );
+    const snapshot = await getDocs(q);
+    
+    const users = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    return { users, error: null };
+  } catch (error: any) {
+    console.error('Error getting college users:', error);
+    return { users: [], error: error.message };
+  }
+};
+
+export const getCollegeInfoByCollegeAdmin = async (collegeAdminUid: string) => {
+  try {
+    // Get college admin's profile to get their collegeId
+    const adminDoc = await getDoc(doc(db, 'users', collegeAdminUid));
+    if (!adminDoc.exists()) {
+      throw new Error('College admin not found');
+    }
+    const adminData = adminDoc.data();
+    if (adminData.role !== 'college_admin' && adminData.role !== 'college-admin') {
+      throw new Error('Unauthorized: User is not a college admin');
+    }
+    const collegeId = adminData.institutionId;
+    if (!collegeId) {
+      throw new Error('College ID not found');
+    }
+
+    // Get college info
+    const collegeDoc = await getDoc(doc(db, 'colleges', collegeId));
+    if (!collegeDoc.exists()) {
+      throw new Error('College not found');
+    }
+    
+    return { college: { id: collegeDoc.id, ...collegeDoc.data() }, error: null };
+  } catch (error: any) {
+    console.error('Error getting college info:', error);
+    return { college: null, error: error.message };
+  }
+};
+
+// Check plan expiry status for college users (college_admin, leader, educator)
+export const checkPlanExpiryStatus = async (userId: string) => {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (!userDoc.exists()) {
+      return { status: 'no_plan', error: null };
+    }
+    
+    const userData = userDoc.data();
+    const role = userData.role;
+    const institutionId = userData.institutionId;
+    
+    // Only check for college_admin, leader, and educator roles
+    if (!['college_admin', 'college-admin', 'leader', 'leaders', 'educator', 'educators'].includes(role) || !institutionId) {
+      return { status: 'no_plan', error: null };
+    }
+    
+    // Get college info
+    const collegeDoc = await getDoc(doc(db, 'colleges', institutionId));
+    if (!collegeDoc.exists()) {
+      return { status: 'no_plan', error: null };
+    }
+    
+    const collegeData = collegeDoc.data();
+    const planEndDate = collegeData.planEndDate;
+    
+    if (!planEndDate) {
+      return { status: 'no_plan', error: null };
+    }
+    
+    const endDate = planEndDate.toDate ? planEndDate.toDate() : new Date(planEndDate);
+    const now = new Date();
+    const diffTime = endDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      // Plan expired
+      return { status: 'expired', error: null };
+    } else if (diffDays <= 2) {
+      // Plan expiring in 2 days or less
+      return { status: 'expiring_soon', daysRemaining: diffDays, error: null };
+    }
+    
+    // Plan is active
+    return { status: 'active', error: null };
+  } catch (error: any) {
+    console.error('Error checking plan expiry status:', error);
+    return { status: 'no_plan', error: error.message };
+  }
+};
+
+export const addCollegeUser = async (userData: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'leader' | 'educator';
+  password: string;
+}, collegeAdminUid: string) => {
+  try {
+    // Validate role
+    if (userData.role !== 'leader' && userData.role !== 'educator') {
+      throw new Error('Invalid role. Only leader and educator roles are allowed.');
+    }
+
+    // Get college admin's profile to get their collegeId and college name
+    const adminDoc = await getDoc(doc(db, 'users', collegeAdminUid));
+    if (!adminDoc.exists()) {
+      throw new Error('College admin not found');
+    }
+    const adminData = adminDoc.data();
+    if (adminData.role !== 'college_admin' && adminData.role !== 'college-admin') {
+      throw new Error('Unauthorized: User is not a college admin');
+    }
+    const collegeId = adminData.institutionId;
+    const collegeName = adminData.institution;
+    if (!collegeId) {
+      throw new Error('College ID not found');
+    }
+
+    // Get college document to find the salesman who created it and check plan limits
+    const collegeDoc = await getDoc(doc(db, 'colleges', collegeId));
+    if (!collegeDoc.exists()) {
+      throw new Error('College not found');
+    }
+    const collegeData = collegeDoc.data();
+    const createdBySalesman = collegeData.createdBySalesman;
+
+    // Check plan expiry
+    if (collegeData.planEndDate) {
+      const planEndDate = collegeData.planEndDate.toDate ? collegeData.planEndDate.toDate() : new Date(collegeData.planEndDate);
+      if (planEndDate < new Date()) {
+        throw new Error('Plan expired. Contact support.');
+      }
+    }
+
+    // Check user limit
+    if (collegeData.userLimit !== undefined) {
+      // Count current users (leader and educator) for this college
+      const usersRef = collection(db, 'users');
+      const q = query(
+        usersRef,
+        where('institutionId', '==', collegeId),
+        where('role', 'in', ['leader', 'educator'])
+      );
+      const usersSnapshot = await getDocs(q);
+      const currentUserCount = usersSnapshot.size;
+
+      if (currentUserCount >= collegeData.userLimit) {
+        throw new Error('User limit reached. Please upgrade plan.');
+      }
+    }
+
+    // Create auth user
+    const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
+    const newUser = userCredential.user;
+
+    // Create user document in Firestore
+    await setDoc(doc(db, 'users', newUser.uid), {
+      email: userData.email,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      role: userData.role,
+      institution: collegeName,
+      institutionId: collegeId,
+      createdBySalesman: createdBySalesman, // Add this so salesmen can read these users
+      createdAt: new Date(),
+      active: true
+    });
+
+    return { success: true, userId: newUser.uid, error: null };
+  } catch (error: any) {
+    console.error('Error adding college user:', error);
+    return { success: false, userId: null, error: error.message };
+  }
+};
+
+export const deleteCollegeUser = async (userId: string, collegeAdminUid: string) => {
+  try {
+    // Get college admin's profile to get their collegeId
+    const adminDoc = await getDoc(doc(db, 'users', collegeAdminUid));
+    if (!adminDoc.exists()) {
+      throw new Error('College admin not found');
+    }
+    const adminData = adminDoc.data();
+    if (adminData.role !== 'college_admin' && adminData.role !== 'college-admin') {
+      throw new Error('Unauthorized: User is not a college admin');
+    }
+    const collegeId = adminData.institutionId;
+    if (!collegeId) {
+      throw new Error('College ID not found');
+    }
+
+    // Verify user belongs to this college and is leader or educator
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (!userDoc.exists()) {
+      throw new Error('User not found');
+    }
+    const userData = userDoc.data();
+    if (userData.institutionId !== collegeId) {
+      throw new Error('Unauthorized: User does not belong to your college');
+    }
+    if (userData.role !== 'leader' && userData.role !== 'educator') {
+      throw new Error('Unauthorized: Can only delete leader or educator users');
+    }
+
+    // Delete user document
+    await deleteDoc(doc(db, 'users', userId));
+    
+    // Note: Firebase Auth user deletion should be handled server-side or by admin
+    // For now, we just remove the Firestore document
+    
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error deleting college user:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// ==================== ADMIN COLLEGE MANAGEMENT FUNCTIONS ====================
+
+// Helper function to calculate plan details
+const calculatePlanDetails = (userLimit: number, planDurationDays: number) => {
+  const planStartDate = new Date();
+  const planEndDate = new Date();
+  planEndDate.setDate(planEndDate.getDate() + planDurationDays);
+  
+  return { userLimit, planStartDate, planEndDate };
+};
+
+// Get all colleges (admin only)
+export const getAllColleges = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('Unauthorized: User not authenticated');
+    }
+
+    // Verify user is admin
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userDoc.exists() || userDoc.data().role !== 'admin') {
+      throw new Error('Unauthorized: Only admins can access all colleges');
+    }
+
+    const collegesRef = collection(db, 'colleges');
+    const snapshot = await getDocs(collegesRef);
+    
+    const colleges = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    return { colleges, error: null };
+  } catch (error: any) {
+    console.error('Error getting all colleges:', error);
+    return { colleges: [], error: error.message };
+  }
+};
+
+// Create college by admin with plan selection
+export const createCollegeByAdmin = async (collegeData: {
+  name: string;
+  shortName?: string;
+  type?: string;
+  affiliation?: string;
+  location?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  website?: string;
+  userLimit: number; // 1 to 30
+  planDurationDays: number; // 2, 5, 30, or 60
+  createdBySalesman?: string; // Optional: assign to a salesman
+}) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('Unauthorized: User not authenticated');
+    }
+
+    // Verify user is admin
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userDoc.exists() || userDoc.data().role !== 'admin') {
+      throw new Error('Unauthorized: Only admins can create colleges');
+    }
+
+    if (!collegeData.userLimit || collegeData.userLimit < 1 || collegeData.userLimit > 30) {
+      throw new Error('Invalid user limit. Must be between 1 and 30');
+    }
+
+    if (!collegeData.planDurationDays || ![2, 5, 30, 60].includes(collegeData.planDurationDays)) {
+      throw new Error('Invalid plan duration. Must be 2, 5, 30, or 60 days');
+    }
+
+    const { userLimit, planStartDate, planEndDate } = calculatePlanDetails(collegeData.userLimit, collegeData.planDurationDays);
+
+    const collegeDoc = {
+      name: collegeData.name,
+      shortName: collegeData.shortName || '',
+      type: collegeData.type || '',
+      affiliation: collegeData.affiliation || '',
+      location: collegeData.location || '',
+      city: collegeData.city || '',
+      state: collegeData.state || '',
+      pincode: collegeData.pincode || '',
+      website: collegeData.website || '',
+      createdBySalesman: collegeData.createdBySalesman || '',
+      userLimit: userLimit,
+      planDurationDays: collegeData.planDurationDays,
+      planStartDate: planStartDate,
+      planEndDate: planEndDate,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const docRef = await addDoc(collection(db, 'colleges'), collegeDoc);
+    return { success: true, collegeId: docRef.id, error: null };
+  } catch (error: any) {
+    console.error('Error creating college by admin:', error);
+    return { success: false, collegeId: null, error: error.message };
+  }
+};
+
+// Update college by admin (including plan changes)
+export const updateCollegeByAdmin = async (collegeId: string, collegeData: {
+  name?: string;
+  shortName?: string;
+  type?: string;
+  affiliation?: string;
+  location?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  website?: string;
+  userLimit?: number; // 1 to 30 (optional for plan changes)
+  planDurationDays?: number; // 2, 5, 30, or 60 (optional for plan changes)
+  createdBySalesman?: string;
+}) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('Unauthorized: User not authenticated');
+    }
+
+    // Verify user is admin
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userDoc.exists() || userDoc.data().role !== 'admin') {
+      throw new Error('Unauthorized: Only admins can update colleges');
+    }
+
+    // Get existing college
+    const collegeDocRef = doc(db, 'colleges', collegeId);
+    const existingCollege = await getDoc(collegeDocRef);
+    if (!existingCollege.exists()) {
+      throw new Error('College not found');
+    }
+
+    const existingData = existingCollege.data();
+    const updateData: any = {
+      updatedAt: new Date()
+    };
+
+    // Update basic fields if provided
+    if (collegeData.name !== undefined) updateData.name = collegeData.name;
+    if (collegeData.shortName !== undefined) updateData.shortName = collegeData.shortName || '';
+    if (collegeData.type !== undefined) updateData.type = collegeData.type || '';
+    if (collegeData.affiliation !== undefined) updateData.affiliation = collegeData.affiliation || '';
+    if (collegeData.location !== undefined) updateData.location = collegeData.location || '';
+    if (collegeData.city !== undefined) updateData.city = collegeData.city || '';
+    if (collegeData.state !== undefined) updateData.state = collegeData.state || '';
+    if (collegeData.pincode !== undefined) updateData.pincode = collegeData.pincode || '';
+    if (collegeData.website !== undefined) updateData.website = collegeData.website || '';
+    if (collegeData.createdBySalesman !== undefined) updateData.createdBySalesman = collegeData.createdBySalesman || '';
+
+    // Update plan if userLimit or planDurationDays is provided
+    const userLimit = collegeData.userLimit !== undefined ? collegeData.userLimit : existingData.userLimit;
+    const planDurationDays = collegeData.planDurationDays !== undefined ? collegeData.planDurationDays : existingData.planDurationDays;
+
+    if (collegeData.userLimit !== undefined || collegeData.planDurationDays !== undefined) {
+      if (userLimit < 1 || userLimit > 30) {
+        throw new Error('Invalid user limit. Must be between 1 and 30');
+      }
+      if (![2, 5, 30, 60].includes(planDurationDays)) {
+        throw new Error('Invalid plan duration. Must be 2, 5, 30, or 60 days');
+      }
+      const { userLimit: calculatedLimit, planStartDate, planEndDate } = calculatePlanDetails(userLimit, planDurationDays);
+      updateData.userLimit = calculatedLimit;
+      updateData.planDurationDays = planDurationDays;
+      updateData.planStartDate = planStartDate;
+      updateData.planEndDate = planEndDate;
+    }
+
+    await updateDoc(collegeDocRef, updateData);
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error updating college by admin:', error);
     return { success: false, error: error.message };
   }
 };

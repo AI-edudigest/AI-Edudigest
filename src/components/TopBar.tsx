@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Bell, LogOut, X, Home, BookOpen, Lightbulb, Shield, Users, BarChart3, Megaphone, DollarSign, Target, Award, TrendingUp, Globe, Sparkles, FileText, Settings, User as UserIcon, Mail, Building2, Briefcase } from 'lucide-react';
-import { getNotifications, getUnreadNotificationCount, markNotificationAsRead, getCurrentUser, getUserProfile } from '../utils/firebase';
+import { getNotifications, getUnreadNotificationCount, markNotificationAsRead, getCurrentUser, getUserProfile, db } from '../utils/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { useSearch } from '../contexts/SearchContext';
 import AdsCarousel from './AdsCarousel';
 import AllNotificationsModal from './AllNotificationsModal';
@@ -26,11 +27,12 @@ interface TopBarProps {
   onLogout?: () => void;
   pageInfo?: PageInfo | null;
   isAdmin?: boolean;
+  isCollegeAdmin?: boolean;
   onAdminPanelToggle?: () => void;
   currentTopicName?: string | null;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ activeSection, onLogout, pageInfo, isAdmin, onAdminPanelToggle, currentTopicName }) => {
+const TopBar: React.FC<TopBarProps> = ({ activeSection, onLogout, pageInfo, isAdmin, isCollegeAdmin, onAdminPanelToggle, currentTopicName }) => {
   const { searchQuery, setSearchQuery, performSearch } = useSearch();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -75,28 +77,36 @@ const TopBar: React.FC<TopBarProps> = ({ activeSection, onLogout, pageInfo, isAd
     return () => clearInterval(interval);
   }, []);
 
-  // Load user profile from Firebase
+  // Load user profile from Firebase with real-time updates
   useEffect(() => {
-    const loadUserProfile = async () => {
-      const currentUser = getCurrentUser();
-      if (currentUser) {
-        setLoadingProfile(true);
-        try {
-          const { profile, error } = await getUserProfile(currentUser.uid);
-          if (profile) {
-            setUserProfile(profile);
-          } else {
-            console.error('Error loading user profile:', error);
-          }
-        } catch (error) {
-          console.error('Error loading user profile:', error);
-        } finally {
-          setLoadingProfile(false);
-        }
-      }
-    };
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
 
-    loadUserProfile();
+    setLoadingProfile(true);
+    
+    // Set up real-time listener for user profile
+    const unsubscribe = onSnapshot(doc(db, 'users', currentUser.uid), (userDoc) => {
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        setUserProfile({
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          email: data.email || '',
+          role: data.role || 'user',
+          institution: data.institution || ''
+        });
+      } else {
+        console.error('User document not found');
+      }
+      setLoadingProfile(false);
+    }, (error) => {
+      console.error('Error in profile listener:', error);
+      setLoadingProfile(false);
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Close dropdowns when clicking outside
@@ -211,10 +221,15 @@ const TopBar: React.FC<TopBarProps> = ({ activeSection, onLogout, pageInfo, isAd
   const getRoleDisplayName = (role: string) => {
     switch (role) {
       case 'admin': return 'Administrator';
+      case 'leader':
       case 'leaders': return 'Leader';
+      case 'educator':
+      case 'educators': return 'Educator';
       case 'faculty': return 'Faculty';
-      case 'college-admin': return 'College Administration Staff';
+      case 'college_admin': return 'college_admin';
+      case 'college-admin': return 'college_admin'; // Support old format too
       case 'student': return 'Student';
+      case 'salesman': return 'Salesman';
       default: return 'User';
     }
   };

@@ -15,8 +15,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onBackToLogin 
     email: '',
     password: '',
     confirmPassword: '',
-    institution: '',
-    role: 'student'
+    institution: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -154,8 +153,7 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onBackToLogin 
         firstName: formData.firstName,
         lastName: formData.lastName,
         institution: formData.institution,
-        institutionId,
-        role: formData.role
+        institutionId
       });
       
       if (error) {
@@ -494,24 +492,6 @@ const SignUpPage: React.FC<SignUpPageProps> = ({ onSignUpSuccess, onBackToLogin 
                   )}
                 </div>
               )}
-            </div>
-
-            {/* Role Selection */}
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">
-                Role <span className="text-red-600">*</span>
-              </label>
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#9b0101] focus:border-[#9b0101] transition-all duration-300 bg-white/70 backdrop-blur-sm"
-              >
-                <option value="leaders">Leaders</option>
-                <option value="faculty">Faculty</option>
-                <option value="college-admin">College Administration Staff</option>
-                <option value="student">Student</option>
-              </select>
             </div>
 
             {/* Password Fields */}

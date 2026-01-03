@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Shield, User, Mail, Calendar, Edit, Clock, AlertCircle, Search, Filter, X, Building2, Trash2 } from 'lucide-react';
-import { getAllUsers, updateUserRole, getCurrentUser, deleteUser } from '../../utils/firebase';
+import { Users, Shield, User, Mail, Calendar, Edit, Clock, AlertCircle, Search, Filter, X, Building2, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { getAllUsers, updateUserRole, updateUserActive, getCurrentUser, deleteUser } from '../../utils/firebase';
 
 interface User {
   id: string;
@@ -11,6 +11,7 @@ interface User {
   createdAt: any;
   lastLoginAt?: any;
   institution?: string;
+  active?: boolean;
 }
 
 const UsersManager: React.FC = () => {
@@ -85,9 +86,20 @@ Please check:
 
   const handleRoleChange = async (userId: string, role: string) => {
     try {
-      const result = await updateUserRole(userId, role);
+      // If setting to salesman, set active to false by default (needs activation)
+      const active = role === 'salesman' ? false : undefined;
+      const result = await updateUserRole(userId, role, active);
       if (result.success) {
-        const updateUser = (user: User) => user.id === userId ? { ...user, role } : user;
+        const updateUser = (user: User) => {
+          if (user.id === userId) {
+            const updated = { ...user, role };
+            if (role === 'salesman') {
+              updated.active = false;
+            }
+            return updated;
+          }
+          return user;
+        };
         setUsers(users.map(updateUser));
         setAllUsers(allUsers.map(updateUser));
         setEditingUser(null);
@@ -96,6 +108,22 @@ Please check:
       }
     } catch (error) {
       console.error('Error updating user role:', error);
+    }
+  };
+
+  const handleToggleActive = async (userId: string, currentActive: boolean) => {
+    try {
+      const result = await updateUserActive(userId, !currentActive);
+      if (result.success) {
+        const updateUser = (user: User) => user.id === userId ? { ...user, active: !currentActive } : user;
+        setUsers(users.map(updateUser));
+        setAllUsers(allUsers.map(updateUser));
+      } else {
+        console.error('Error updating user active status:', result.error);
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error updating user active status:', error);
     }
   };
 
@@ -129,12 +157,17 @@ Please check:
     switch (role) {
       case 'admin':
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'college_admin':
+      case 'college-admin':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
       case 'faculty':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
       case 'leaders':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
       case 'student':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'salesman':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
@@ -334,9 +367,24 @@ Please check:
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
-                          {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
+                            {user.role === 'college_admin' || user.role === 'college-admin' 
+                              ? 'college_admin' 
+                              : user.role === 'admin' 
+                                ? 'Administrator'
+                                : user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                          </span>
+                          {user.role === 'salesman' && (
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              user.active !== undefined && user.active
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                            }`}>
+                              {user.active !== undefined && user.active ? 'Active' : 'Inactive'}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex justify-center items-center">
@@ -347,10 +395,11 @@ Please check:
                                 onChange={(e) => setNewRole(e.target.value)}
                                 className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                               >
-                                <option value="student">Student</option>
-                                <option value="faculty">Faculty</option>
-                                <option value="admin">Administrator</option>
-                                <option value="leaders">Leaders</option>
+                                <option value="college_admin">college_admin</option>
+                                <option value="salesman">salesman</option>
+                                <option value="leader">Leader</option>
+                                <option value="educator">Educator</option>
+                                <option value="admin">administrator</option>
                               </select>
                               <button
                                 onClick={() => handleRoleChange(user.id, newRole)}
@@ -367,6 +416,23 @@ Please check:
                             </div>
                           ) : (
                             <div className="flex items-center space-x-2">
+                              {user.role === 'salesman' && (
+                                <button
+                                  onClick={() => handleToggleActive(user.id, user.active !== undefined ? user.active : false)}
+                                  className={`p-2 rounded-lg transition-colors ${
+                                    user.active !== undefined && user.active
+                                      ? 'text-green-600 hover:bg-green-100 dark:hover:bg-green-900'
+                                      : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                  }`}
+                                  title={user.active !== undefined && user.active ? 'Deactivate Salesman' : 'Activate Salesman'}
+                                >
+                                  {user.active !== undefined && user.active ? (
+                                    <ToggleRight className="w-5 h-5" />
+                                  ) : (
+                                    <ToggleLeft className="w-5 h-5" />
+                                  )}
+                                </button>
+                              )}
                               <button
                                 onClick={() => {
                                   setEditingUser(user);

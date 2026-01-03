@@ -18,7 +18,7 @@ interface ProfileCompletionModalProps {
 const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({ isOpen, onClose, user }) => {
   const [institution, setInstitution] = useState('');
   const [institutionId, setInstitutionId] = useState('');
-  const [role, setRole] = useState('student');
+  const [role, setRole] = useState('leader');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -281,10 +281,11 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({ isOpen,
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#9b0101] focus:border-[#9b0101] transition-all duration-300 bg-white"
                 required
               >
-                <option value="student">Student</option>
-                <option value="faculty">Faculty</option>
-                <option value="admin">Administrator</option>
-                <option value="leaders">Leaders</option>
+                <option value="college_admin">college_admin</option>
+                <option value="salesman">salesman</option>
+                <option value="leader">Leader</option>
+                <option value="educator">Educator</option>
+                <option value="admin">administrator</option>
               </select>
             </div>
 

@@ -590,7 +590,7 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
                   </span>
                 )}
                 {/* Edit and Delete buttons - visible only for leaders and admins in both Upcoming and History tabs */}
-                {resourceType === 'upcomingEvents' && (userRole === 'leaders' || userRole === 'admin') && item.id && (
+                {resourceType === 'upcomingEvents' && (userRole === 'leader' || userRole === 'leaders' || userRole === 'admin') && item.id && (
                   <div className="flex items-center space-x-1">
                     <button
                       onClick={() => openEditEventModal(item)}
@@ -881,7 +881,7 @@ const ResourcePage: React.FC<ResourcePageProps> = ({ resourceType, onGoBack, can
             )}
             
             {/* Add Event Button - Only show for leaders and admin on upcoming events page */}
-            {resourceType === 'upcomingEvents' && (userRole === 'leaders' || userRole === 'admin') && (
+            {resourceType === 'upcomingEvents' && (userRole === 'leader' || userRole === 'leaders' || userRole === 'admin') && (
               <button
                 onClick={openEventModal}
                 className="flex items-center space-x-2 bg-[#9b0101] hover:bg-[#7a0101] text-white px-4 py-2 rounded-lg transition-colors duration-200 font-medium"

@@ -13,7 +13,8 @@ import {
   Calendar,
   Newspaper,
   BookMarked,
-  Trash2
+  Trash2,
+  Building2
 } from 'lucide-react';
 import AdminDashboard from './AdminDashboard';
 import ArticlesManager from './ArticlesManager';
@@ -29,6 +30,7 @@ import LatestUpdatesManager from './LatestUpdatesManager';
 import PromptTemplatesManager from './PromptTemplatesManager';
 import MagazineCoversManager from './MagazineCoversManager';
 import RecycleBinManager from './RecycleBinManager';
+import CollegesManager from './CollegesManager';
 
 interface AdminLayoutProps {
   onLogout: () => void;
@@ -52,6 +54,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout, onBackToHome }) => 
     { id: 'sidebarTabs', label: 'Sidebar Tabs', icon: LayoutDashboard },
     { id: 'magazineCovers', label: 'Magazine Covers', icon: BookMarked },
     { id: 'users', label: 'Users', icon: Users },
+    { id: 'colleges', label: 'Colleges', icon: Building2 },
     { id: 'recycleBin', label: 'Recycle Bin', icon: Trash2 }
   ];
 
@@ -91,6 +94,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ onLogout, onBackToHome }) => 
         return <MagazineCoversManager />;
       case 'users':
         return <UsersManager />;
+      case 'colleges':
+        return <CollegesManager />;
       case 'recycleBin':
         return <RecycleBinManager />;
       default:
