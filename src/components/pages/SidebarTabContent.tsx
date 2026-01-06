@@ -47,7 +47,7 @@ const SidebarTabContent: React.FC<SidebarTabContentProps> = ({
         setLoading(true);
         const { getSidebarTabs } = await import('../../utils/firebase');
         const { tabs } = await getSidebarTabs();
-        const foundTab = tabs.find((t: SidebarTab) => t.id === tabId);
+        const foundTab = (tabs as SidebarTab[]).find((t: SidebarTab) => t.id === tabId);
         setTab(foundTab || null);
       } catch (error) {
         console.error('Error fetching tab content:', error);
@@ -81,15 +81,6 @@ const SidebarTabContent: React.FC<SidebarTabContentProps> = ({
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             The requested content could not be found or may have been removed.
           </p>
-          {canGoBack && (
-            <button
-              onClick={onGoBack}
-              className="bg-[#9b0101] text-white px-6 py-2 rounded-lg hover:bg-[#7a0101] transition-colors flex items-center mx-auto"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Go Back
-            </button>
-          )}
         </div>
       </div>
     );

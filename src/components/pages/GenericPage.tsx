@@ -1,5 +1,4 @@
 import React from 'react';
-import { BookOpen, Brain, Shield, Bot, FileText } from 'lucide-react';
 import ArticleTTS from '../common/ArticleTTS';
 
 interface GenericPageProps {
@@ -8,39 +7,8 @@ interface GenericPageProps {
   section: string;
 }
 
-const GenericPage: React.FC<GenericPageProps> = ({ title, description, section }) => {
-  const getIcon = (section: string) => {
-    switch (section) {
-      case 'learningModules':
-      case 'aiFundamentals':
-      case 'aiIntro':
-      case 'aiInEducation':
-      case 'whyCollegeAdoptAI':
-        return BookOpen;
-      case 'generativeAI':
-        return Brain;
-      case 'responsibleAI':
-        return Shield;
-      case 'aiAgent':
-        return Bot;
-      case 'promptEngineering':
-        return FileText;
-      case 'facultyFocus':
-        return BookOpen;
-      case 'dataLiteracyTrack':
-        return Brain;
-      case 'aiAccreditation':
-        return Shield;
-      case 'aiStrategicGrowth':
-        return Bot;
-      case 'aiGlobalCompetitiveness':
-        return Brain;
-      default:
-        return BookOpen;
-    }
-  };
-
-  const Icon = getIcon(section);
+const GenericPage: React.FC<GenericPageProps> = ({ title, section }) => {
+  // Description prop available for future use if needed
 
   const getContent = (section: string) => {
     switch (section) {

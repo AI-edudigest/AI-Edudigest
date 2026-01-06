@@ -16,7 +16,7 @@ import {
   Award,
   Settings
 } from 'lucide-react';
-import { getSidebarTabs, getCurrentUser, getUserProfile } from '../utils/firebase';
+import { getSidebarTabs, getCurrentUser, getUserProfile, getUserRole } from '../utils/firebase';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -25,6 +25,17 @@ interface SidebarProps {
   expandedMenus: { [key: string]: boolean };
   setExpandedMenus: React.Dispatch<React.SetStateAction<{ [key: string]: boolean }>>;
   activeSidebarTabId?: string | null;
+}
+
+interface RoleContent {
+  content?: string;
+  youtubeUrl?: string;
+  topicName?: string;
+  subTopic?: string;
+  headingText?: string;
+  headingColor?: string;
+  fontSize?: string;
+  fontStyle?: string;
 }
 
 interface SidebarTab {
@@ -41,6 +52,15 @@ interface SidebarTab {
     label: string;
     section: string;
   }>;
+  // Role-based content structure
+  roleContent?: {
+    educator?: RoleContent;
+    leader?: RoleContent;
+    college_admin?: RoleContent;
+    'college-admin'?: RoleContent;
+  };
+  // Role-based visibility (optional - for explicit role filtering)
+  visibleRoles?: string[];
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -54,6 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [dynamicMenuItems, setDynamicMenuItems] = useState<SidebarTab[]>([]);
   const [loading, setLoading] = useState(true);
   const [institutionName, setInstitutionName] = useState<string>('');
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Icon mapping
   const iconMap: { [key: string]: React.ComponentType<any> } = {
@@ -72,6 +93,67 @@ const Sidebar: React.FC<SidebarProps> = ({
     Globe: Files
   };
 
+  // Load user role
+  useEffect(() => {
+    const loadUserRole = async () => {
+      try {
+        const user = getCurrentUser();
+        if (user) {
+          const role = await getUserRole(user.uid);
+          setUserRole(role);
+        }
+      } catch (error) {
+        console.error('Error loading user role:', error);
+      }
+    };
+    loadUserRole();
+  }, []);
+
+  // Check if a tab should be visible for the current user's role
+  const shouldShowTab = (tab: SidebarTab, role: string | null): boolean => {
+    // If no role, show all tabs (fallback)
+    if (!role) {
+      console.log(`Sidebar: No role provided for tab "${tab.label}", showing to all`);
+      return true;
+    }
+
+    // Normalize role name
+    let normalizedRole = role.toLowerCase();
+    if (normalizedRole === 'college-admin') {
+      normalizedRole = 'college_admin';
+    }
+    if (normalizedRole === 'leaders') {
+      normalizedRole = 'leader';
+    }
+    if (normalizedRole === 'educators') {
+      normalizedRole = 'educator';
+    }
+
+    console.log(`Sidebar: Checking tab "${tab.label}" for normalized role: "${normalizedRole}"`);
+
+    // If tab has explicit visibleRoles, check against it
+    if (tab.visibleRoles && tab.visibleRoles.length > 0) {
+      const matches = tab.visibleRoles.some(r => r.toLowerCase() === normalizedRole);
+      console.log(`Sidebar: Tab "${tab.label}" has visibleRoles: [${tab.visibleRoles.join(', ')}], matches: ${matches}`);
+      return matches;
+    }
+
+    // If tab has roleContent structure, only show if current role has content
+    if (tab.roleContent) {
+      const roleContent = tab.roleContent[normalizedRole as keyof typeof tab.roleContent];
+      const hasContent = !!roleContent && (!!roleContent.content || !!roleContent.youtubeUrl);
+      console.log(`Sidebar: Tab "${tab.label}" has roleContent for "${normalizedRole}": ${hasContent}`);
+      if (hasContent) {
+        console.log(`Sidebar: Tab "${tab.label}" - Content: ${!!roleContent?.content}, YouTube: ${!!roleContent?.youtubeUrl}`);
+      }
+      return hasContent;
+    }
+
+    // If no roleContent structure, show to everyone (legacy behavior)
+    console.log(`Sidebar: Tab "${tab.label}" has no roleContent or visibleRoles, showing to all (legacy)`);
+    return true;
+  };
+
   // Load dynamic menu items from Firebase
   useEffect(() => {
     const loadMenuItems = async () => {
@@ -83,11 +165,36 @@ const Sidebar: React.FC<SidebarProps> = ({
         
         if (error) {
           console.error('Error loading sidebar tabs:', error);
-          // No fallback - show empty sidebar if Firebase fails
           setDynamicMenuItems([] as SidebarTab[]);
         } else {
           // Filter only active tabs and ensure proper typing
-          const activeTabs = tabs.filter((tab: any) => tab.active && tab.name && tab.icon);
+          let activeTabs = (tabs as SidebarTab[]).filter((tab: SidebarTab) => tab.active && tab.name && tab.icon);
+          
+          // Filter tabs based on user role - only show tabs with content for current role
+          if (userRole) {
+            const beforeFilter = activeTabs.length;
+            console.log(`Sidebar: Starting filter for role: ${userRole}, Total tabs: ${beforeFilter}`);
+            activeTabs = activeTabs.filter((tab: SidebarTab) => {
+              const shouldShow = shouldShowTab(tab, userRole);
+              const hasRoleContent = !!tab.roleContent;
+              // Fix: tab.roleContent is an object, not an array. Don't check .length, just check if visibleRoles exists and is non-empty.
+              const hasVisibleRoles = Array.isArray(tab.visibleRoles) && tab.visibleRoles.length > 0;
+              
+              console.log(`Sidebar: Tab "${tab.label}" - hasRoleContent: ${hasRoleContent}, hasVisibleRoles: ${hasVisibleRoles}, shouldShow: ${shouldShow}`);
+              
+              if (!shouldShow) {
+                console.log(`Sidebar: ❌ Hiding tab "${tab.label}" for role "${userRole}"`);
+              } else {
+                console.log(`Sidebar: ✅ Showing tab "${tab.label}" for role "${userRole}"`);
+              }
+              return shouldShow;
+            });
+            console.log(`Sidebar: Filtered ${beforeFilter} tabs to ${activeTabs.length} tabs for role: ${userRole}`);
+            console.log(`Sidebar: Visible tabs:`, activeTabs.map(t => t.label));
+          } else {
+            console.log('Sidebar: No user role loaded, showing all tabs');
+          }
+          
           console.log('Active tabs found:', activeTabs);
           setDynamicMenuItems(activeTabs);
         }
@@ -112,7 +219,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, []);
+  }, [userRole]);
 
   // Load logged-in user's institution for branding subtitle
   useEffect(() => {
@@ -158,7 +265,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <span style={{ color: '#000000' }}>AI-</span>
                   <span style={{ color: '#9b0101' }}>TODAY</span>
                 </h1>
-                <p className="text-xs font-bold text-gray-600 dark:text-gray-400 mt-0.5">
+                <p className="text-xs font-bold mt-0.5" style={{ color: '#000000' }}>
                   {institutionName ? `AI for ${institutionName}` : 'AI for Colleges'}
                 </p>
               </div>
@@ -195,63 +302,67 @@ const Sidebar: React.FC<SidebarProps> = ({
           <ul className="space-y-1 pt-4">
             {dynamicMenuItems.map((item) => {
               const IconComponent = iconMap[item.icon] || Home;
+              
+              // Note: Tabs are already filtered by shouldShowTab above
+              // This map only renders tabs that passed the filter
+              
               return (
                 <li key={item.id}>
-                  <button
-                    onClick={() => {
-                      if (item.hasSubmenu && !isCollapsed) {
-                        toggleMenu(item.id);
-                      } else {
-                        // Special handling for Home tab - navigate to actual home page
-                        if (item.section === 'home' || item.name.toLowerCase() === 'home') {
-                          setActiveSection('home');
+                    <button
+                      onClick={() => {
+                        if (item.hasSubmenu && !isCollapsed) {
+                          toggleMenu(item.id);
                         } else {
-                          // For other dynamic sidebar tabs, use 'sidebarTab' section and pass the tab ID
-                          setActiveSection('sidebarTab', item.id);
+                          // Special handling for Home tab - navigate to actual home page
+                          if (item.section === 'home' || item.name.toLowerCase() === 'home') {
+                            setActiveSection('home');
+                          } else {
+                            // For other dynamic sidebar tabs, use 'sidebarTab' section and pass the tab ID
+                            setActiveSection('sidebarTab', item.id);
+                          }
                         }
-                      }
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-3 rounded-lg text-left transition-all duration-200 transform hover:scale-105 ${
-                      (activeSection === 'home' && (item.section === 'home' || item.name.toLowerCase() === 'home')) ||
-                      (activeSection === 'sidebarTab' && activeSidebarTabId === item.id)
-                        ? 'bg-[#9b0101]/10 dark:bg-[#9b0101]/20 text-[#9b0101] dark:text-[#9b0101] border border-[#9b0101]/30 dark:border-[#9b0101]/50' 
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
-                    title={isCollapsed ? item.label : ''}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <IconComponent className="w-5 h-5 flex-shrink-0" />
-                      {!isCollapsed && <span className="font-medium text-black">{item.label}</span>}
-                    </div>
-                    {item.hasSubmenu && !isCollapsed && (
-                      <ChevronDown 
-                        className={`w-4 h-4 transition-transform duration-200 ${
-                          expandedMenus[item.id] ? 'rotate-180' : ''
-                        }`} 
-                      />
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-3 rounded-lg text-left transition-all duration-200 transform hover:scale-105 ${
+                        (activeSection === 'home' && (item.section === 'home' || item.name.toLowerCase() === 'home')) ||
+                        (activeSection === 'sidebarTab' && activeSidebarTabId === item.id)
+                          ? 'bg-[#9b0101]/10 dark:bg-[#9b0101]/20 text-[#9b0101] dark:text-[#9b0101] border border-[#9b0101]/30 dark:border-[#9b0101]/50' 
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                      title={isCollapsed ? item.label : ''}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <IconComponent className="w-5 h-5 flex-shrink-0" />
+                        {!isCollapsed && <span className="font-medium text-black">{item.label}</span>}
+                      </div>
+                      {item.hasSubmenu && !isCollapsed && (
+                        <ChevronDown 
+                          className={`w-4 h-4 transition-transform duration-200 ${
+                            expandedMenus[item.id] ? 'rotate-180' : ''
+                          }`} 
+                        />
+                      )}
+                    </button>
+                    
+                    {/* Submenu */}
+                    {item.hasSubmenu && !isCollapsed && expandedMenus[item.id] && (
+                      <ul className="mt-2 ml-8 space-y-1 animate-in slide-in-from-top-2 duration-200">
+                        {item.submenu?.map((subItem) => (
+                          <li key={subItem.id}>
+                            <button 
+                              onClick={() => setActiveSection(subItem.section)}
+                              className={`w-full text-left px-3 py-2 text-sm rounded transition-all duration-200 hover:scale-105 ${
+                                activeSection === subItem.section
+                                  ? 'text-[#9b0101] dark:text-[#9b0101] bg-[#9b0101]/10 dark:bg-[#9b0101]/20'
+                                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
+                              }`}
+                            >
+                              {subItem.label}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
                     )}
-                  </button>
-                  
-                  {/* Submenu */}
-                  {item.hasSubmenu && !isCollapsed && expandedMenus[item.id] && (
-                    <ul className="mt-2 ml-8 space-y-1 animate-in slide-in-from-top-2 duration-200">
-                      {item.submenu?.map((subItem) => (
-                        <li key={subItem.id}>
-                          <button 
-                            onClick={() => setActiveSection(subItem.section)}
-                            className={`w-full text-left px-3 py-2 text-sm rounded transition-all duration-200 hover:scale-105 ${
-                              activeSection === subItem.section
-                                ? 'text-[#9b0101] dark:text-[#9b0101] bg-[#9b0101]/10 dark:bg-[#9b0101]/20'
-                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
-                            }`}
-                          >
-                            {subItem.label}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
+                  </li>
               );
             })}
           </ul>

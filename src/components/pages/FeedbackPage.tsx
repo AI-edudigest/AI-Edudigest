@@ -7,10 +7,7 @@ import {
   AlertCircle,
   ChevronLeft,
   User,
-  Mail,
-  MessageCircle,
-  ThumbsUp,
-  ThumbsDown
+  Mail
 } from 'lucide-react';
 import { BackButtonProps } from '../../types/common';
 import { getFeedbackForms, submitFeedbackForm } from '../../utils/firebase';
@@ -64,14 +61,14 @@ const FeedbackPage: React.FC<FeedbackPageProps> = ({ onGoBack, canGoBack }) => {
         setError('Failed to load feedback forms. Please try again later.');
       } else {
         console.log('Loaded feedback forms:', forms);
-        setFeedbackForms(forms);
+        setFeedbackForms(forms as FeedbackForm[]);
         // Select the first active form if available
-        const activeForm = forms.find(form => form.active);
+        const activeForm = (forms as FeedbackForm[]).find(form => (form as any).active || (form as FeedbackForm).isActive);
         if (activeForm) {
           setSelectedForm(activeForm);
           // Initialize form data with empty values
           const initialData: FormData = {};
-          activeForm?.fields?.forEach((field: FeedbackField) => {
+          activeForm.fields?.forEach((field: FeedbackField) => {
             if (field.type === 'checkbox') {
               initialData[field.id] = false;
             } else if (field.type === 'rating') {

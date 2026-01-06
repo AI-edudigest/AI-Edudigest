@@ -139,9 +139,13 @@ const CollegeDashboard: React.FC<CollegeDashboardProps> = ({ onBackToHome, onLog
           role: 'leader',
           password: ''
         });
-        setShowAddUser(false);
         // Reload users
         await loadData();
+        // Close modal after 2 seconds to show success message
+        setTimeout(() => {
+          setShowAddUser(false);
+          setSuccessMessage(null);
+        }, 2000);
       } else {
         setError(result.error || 'Failed to add user');
       }
@@ -428,7 +432,7 @@ const CollegeDashboard: React.FC<CollegeDashboardProps> = ({ onBackToHome, onLog
       {/* Add User Modal */}
       {showAddUser && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto relative z-50">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">Add User</h3>
@@ -452,6 +456,35 @@ const CollegeDashboard: React.FC<CollegeDashboardProps> = ({ onBackToHome, onLog
             </div>
 
             <form onSubmit={handleAddUser} className="p-6 space-y-4">
+              {/* Success/Error Messages inside Modal */}
+              {successMessage && (
+                <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-center space-x-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <p className="text-green-800 dark:text-green-200 text-sm flex-1">{successMessage}</p>
+                  <button
+                    onClick={() => setSuccessMessage(null)}
+                    className="flex-shrink-0"
+                    type="button"
+                  >
+                    <XCircle className="w-5 h-5 text-green-600 dark:text-green-400 hover:text-green-800" />
+                  </button>
+                </div>
+              )}
+
+              {error && (
+                <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center space-x-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                  <p className="text-red-800 dark:text-red-200 text-sm flex-1">{error}</p>
+                  <button
+                    onClick={() => setError(null)}
+                    className="flex-shrink-0"
+                    type="button"
+                  >
+                    <XCircle className="w-5 h-5 text-red-600 dark:text-red-400 hover:text-red-800" />
+                  </button>
+                </div>
+              )}
+
               {/* College Name (Disabled) */}
               {college && (
                 <div>

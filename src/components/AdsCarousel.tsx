@@ -29,7 +29,7 @@ const AdsCarousel: React.FC<AdsCarouselProps> = ({ institutionName }) => {
         if (result.ads) {
           console.log('📝 AdsCarousel: All ads:', result.ads);
           // Temporarily show all ads for debugging
-          const allAds = result.ads;
+          const allAds = result.ads as Ad[];
           console.log('✅ AdsCarousel: All ads (debug mode):', allAds);
           setAds(allAds);
         } else {
@@ -48,7 +48,7 @@ const AdsCarousel: React.FC<AdsCarouselProps> = ({ institutionName }) => {
             // Refetch ads
             const newResult = await getAds();
             if (newResult.ads) {
-              setAds(newResult.ads);
+              setAds(newResult.ads as Ad[]);
             }
           } catch (testError) {
             console.error('❌ AdsCarousel: Failed to create test ad:', testError);
@@ -122,8 +122,6 @@ const AdsCarousel: React.FC<AdsCarouselProps> = ({ institutionName }) => {
 
   console.log('✅ AdsCarousel: Rendering ads carousel with', ads.length, 'ads');
 
-  const currentAd = ads[currentIndex];
-
   return (
     <div className="relative h-20 w-64 mx-auto overflow-hidden">
       {/* 3D Carousel Container */}
@@ -136,7 +134,7 @@ const AdsCarousel: React.FC<AdsCarouselProps> = ({ institutionName }) => {
           }}
         >
           {/* All Ads in Smooth Sliding Carousel */}
-          {ads.map((ad, index) => (
+          {ads.map((ad) => (
             <div
               key={ad.id}
               className="flex-shrink-0 w-full h-full cursor-pointer"

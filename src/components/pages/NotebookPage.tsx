@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Save, Play, FileText, Code, Image, ChevronLeft } from 'lucide-react';
+import { Plus, Save, Play, FileText, Code, ChevronLeft } from 'lucide-react';
 import { BackButtonProps } from '../../types/common';
 
 interface NotebookPageProps extends BackButtonProps {}

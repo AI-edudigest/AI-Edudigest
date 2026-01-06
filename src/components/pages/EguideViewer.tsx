@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Download, Eye, BookOpen } from 'lucide-react';
-// import { formatFileSize } from '../../utils/storage/uploadPdf';
 
 interface EguideContent {
   id: string;

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Shield } from 'lucide-react';
 import ArticleTTS from '../common/ArticleTTS';
 
 const ResponsibleAIFrameworkGuide: React.FC = () => {

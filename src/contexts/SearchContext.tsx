@@ -336,7 +336,6 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({ children }) => {
       const results = searchableContent
         .filter(item => {
           const titleMatch = item.title.toLowerCase().includes(query.toLowerCase());
-          const contentMatch = item.content.toLowerCase().includes(query.toLowerCase());
           
           // Only show results that match the title/heading
           return titleMatch;

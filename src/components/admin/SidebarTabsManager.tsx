@@ -43,6 +43,8 @@ interface SidebarTab {
   headingColor?: string; // Added for heading color
   fontSize?: string; // Added for font size
   fontStyle?: string; // Added for font style
+  // Role-based visibility
+  visibleRoles?: string[];
 }
 
 const SidebarTabsManager: React.FC = () => {
@@ -56,7 +58,8 @@ const SidebarTabsManager: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     icon: 'Home',
-    active: true
+    active: true,
+    visibleRoles: [] as string[] // Selected roles that can see this tab
   });
 
   const [topicFormData, setTopicFormData] = useState({
@@ -185,7 +188,8 @@ const SidebarTabsManager: React.FC = () => {
         setFormData({
           name: '',
           icon: 'Home',
-          active: true
+          active: true,
+          visibleRoles: []
         });
         
         // Trigger sidebar refresh
@@ -302,7 +306,8 @@ const SidebarTabsManager: React.FC = () => {
     setFormData({
       name: tab.name || tab.label,
       icon: tab.icon,
-      active: tab.active
+      active: tab.active,
+      visibleRoles: tab.visibleRoles || []
     });
     setShowForm(true);
   };
@@ -420,16 +425,80 @@ const SidebarTabsManager: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.active}
-                  onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                  className="rounded border-gray-300 text-[#9b0101] focus:ring-[#9b0101] mr-2"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Active (visible to users)</span>
-              </label>
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.active}
+                    onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                    className="rounded border-gray-300 text-[#9b0101] focus:ring-[#9b0101] mr-2"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Active (visible to users)</span>
+                </label>
+              </div>
+
+              {/* Role Selection */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Visible to Roles (select which roles can see this tab)
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {[
+                    { value: 'admin', label: 'Administrator', color: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' },
+                    { value: 'college_admin', label: 'College Admin', color: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' },
+                    { value: 'leader', label: 'Leader', color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' },
+                    { value: 'educator', label: 'Educator', color: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' },
+                    { value: 'salesman', label: 'Salesman', color: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800' }
+                  ].map((role) => (
+                    <label
+                      key={role.value}
+                      className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                        formData.visibleRoles.includes(role.value)
+                          ? `${role.color} border-[#9b0101]`
+                          : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.visibleRoles.includes(role.value)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({
+                              ...formData,
+                              visibleRoles: [...formData.visibleRoles, role.value]
+                            });
+                          } else {
+                            setFormData({
+                              ...formData,
+                              visibleRoles: formData.visibleRoles.filter(r => r !== role.value)
+                            });
+                          }
+                        }}
+                        className="rounded border-gray-300 text-[#9b0101] focus:ring-[#9b0101] mr-2"
+                      />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {role.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  {formData.visibleRoles.length === 0 
+                    ? '⚠️ No roles selected - tab will be visible to all users (if active)'
+                    : `✓ Visible to: ${formData.visibleRoles.map(r => {
+                        const roleMap: { [key: string]: string } = {
+                          'admin': 'Administrator',
+                          'college_admin': 'College Admin',
+                          'leader': 'Leader',
+                          'educator': 'Educator',
+                          'salesman': 'Salesman'
+                        };
+                        return roleMap[r] || r;
+                      }).join(', ')}`
+                  }
+                </p>
+              </div>
             </div>
 
             <div className="flex justify-end space-x-3">
@@ -479,13 +548,20 @@ const SidebarTabsManager: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center space-x-3">
                           <h4 className="font-semibold text-gray-900 dark:text-white">{tab.label || tab.name}</h4>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            tab.active 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' 
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
-                          }`}>
-                            {tab.active ? 'Active' : 'Inactive'}
-                          </span>
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              tab.active 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' 
+                                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
+                            }`}>
+                              {tab.active ? 'Active' : 'Inactive'}
+                            </span>
+                            {tab.visibleRoles && tab.visibleRoles.length > 0 && (
+                              <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400" title={`Visible to: ${tab.visibleRoles.join(', ')}`}>
+                                {tab.visibleRoles.length} {tab.visibleRoles.length === 1 ? 'Role' : 'Roles'}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -312,6 +312,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onShowSignUp }) =
                     <label className="text-sm text-gray-700">Email address</label>
                     <input type="email" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} className="mt-1 w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-[#9b0101]" placeholder="you@example.com" />
                   </div>
+                  {resetMessage && <p className="text-green-500 text-sm">{resetMessage}</p>}
                   {resetError && <p className="text-red-500 text-sm">{resetError}</p>}
                   <div className="flex gap-3 justify-end">
                     <button type="button" onClick={() => setResetOpen(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700">Cancel</button>

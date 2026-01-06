@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, updateDoc, deleteDoc, getDocs, query, orderBy, limit, where, onSnapshot, writeBatch } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { v4 as uuidv4 } from 'uuid';
 
 // Firebase configuration
@@ -23,6 +24,9 @@ export const auth = getAuth(app);
 
 // Initialize Cloud Firestore and get a reference to the service
 export const db = getFirestore(app);
+
+// Initialize Firebase Cloud Functions
+export const functions = getFunctions(app);
 
 // Initialize Firebase Storage and get a reference to the service
 export const storage = getStorage(app);
@@ -1680,7 +1684,7 @@ export const subscribeToEvents = (callback: (events: any[]) => void) => {
       });
       
       console.log(`✅ Processed and sorted events: ${events.length} events after college filtering`);
-      console.log('📋 Filtered events:', events.map(e => ({ id: e.id, title: e.title, college: e.college })));
+      console.log('📋 Filtered events:', events.map((e: any) => ({ id: e.id, title: e.title || '', college: e.college || '' })));
       callback(events);
     }, (error) => {
       console.error('❌ Error in events subscription:', error);
@@ -1973,8 +1977,6 @@ export const softDeleteItem = async (collectionName: string, itemId: string) => 
     if (!itemDoc.exists()) {
       throw new Error('Item not found');
     }
-
-    const itemData = itemDoc.data();
     
     // Mark as deleted with timestamp
     await updateDoc(itemRef, {
@@ -2260,7 +2262,7 @@ export const getCollegesBySalesman = async (salesmanUid: string) => {
       }
     }
     
-    const colleges = snapshot.docs.map(doc => ({
+    const colleges = snapshot.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data()
     }));
@@ -2664,41 +2666,22 @@ export const addCollegeUser = async (userData: {
       }
     }
 
-    // Check user limit
-    if (collegeData.userLimit !== undefined) {
-      // Count current users (leader and educator) for this college
-      const usersRef = collection(db, 'users');
-      const q = query(
-        usersRef,
-        where('institutionId', '==', collegeId),
-        where('role', 'in', ['leader', 'educator'])
-      );
-      const usersSnapshot = await getDocs(q);
-      const currentUserCount = usersSnapshot.size;
+    // Call Cloud Function to create user (uses Admin SDK, admin stays logged in)
+    const createCollegeUser = httpsCallable(functions, 'createCollegeUser');
 
-      if (currentUserCount >= collegeData.userLimit) {
-        throw new Error('User limit reached. Please upgrade plan.');
-      }
-    }
-
-    // Create auth user
-    const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
-    const newUser = userCredential.user;
-
-    // Create user document in Firestore
-    await setDoc(doc(db, 'users', newUser.uid), {
+    const result = await createCollegeUser({
       email: userData.email,
+      password: userData.password,
       firstName: userData.firstName,
       lastName: userData.lastName,
       role: userData.role,
-      institution: collegeName,
-      institutionId: collegeId,
-      createdBySalesman: createdBySalesman, // Add this so salesmen can read these users
-      createdAt: new Date(),
-      active: true
+      collegeId: collegeId,
+      collegeName: collegeName,
+      createdBySalesman: createdBySalesman
     });
 
-    return { success: true, userId: newUser.uid, error: null };
+    const resultData = result.data as { success: boolean; userId: string };
+    return { success: true, userId: resultData.userId, error: null };
   } catch (error: any) {
     console.error('Error adding college user:', error);
     return { success: false, userId: null, error: error.message };

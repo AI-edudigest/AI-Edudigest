@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const PromptToContextPage: React.FC = () => {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);

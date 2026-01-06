@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Layers, Zap, BookOpen, Users, X, Plus } from 'lucide-react';
+import { Layers, Zap, BookOpen, Users, X, Plus } from 'lucide-react';
 import { BackButtonProps } from '../../types/common';
-import { getSponsors, subscribeToArticles } from '../../utils/firebase';
+import { getSponsors, subscribeToArticles, getCurrentUser, getUserRole, getUserProfile } from '../../utils/firebase';
 import ArticleTTS from '../common/ArticleTTS';
 
 interface HomePageProps extends BackButtonProps {
@@ -14,10 +14,12 @@ interface HomePageProps extends BackButtonProps {
 
 const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, isCollegeAdmin, onAdminPanelToggle, onCollegeDashboardClick }) => {
   const [articles, setArticles] = useState<any[]>([]);
-  const [sponsors, setSponsors] = useState<any[]>([]);
+  // Sponsors are handled by SponsorsCarousel component
   const [loading, setLoading] = useState(true);
   const [selectedArticle, setSelectedArticle] = useState<any>(null);
   const [playingArticleId, setPlayingArticleId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>('');
 
   // Hardcoded news items removed - news is now managed dynamically through articles
 
@@ -28,6 +30,27 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, isCollege
     { icon: Users, title: 'Community', color: 'bg-[#9b0101]', action: 'community' }
   ];
 
+
+  // Load user role and name
+  useEffect(() => {
+    const loadUserInfo = async () => {
+      try {
+        const user = getCurrentUser();
+        if (user) {
+          const role = await getUserRole(user.uid);
+          setUserRole(role);
+          
+          const { profile } = await getUserProfile(user.uid);
+          if (profile?.firstName) {
+            setUserName(profile.firstName);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user info:', error);
+      }
+    };
+    loadUserInfo();
+  }, []);
 
   // Fetch data from Firebase with real-time updates
   useEffect(() => {
@@ -48,20 +71,20 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, isCollege
         try {
           const sponsorsResult = await getSponsors();
           if (sponsorsResult.sponsors) {
-            const activeSponsors = sponsorsResult.sponsors
+            // Sponsors are handled by SponsorsCarousel component
+            // Filter and map sponsors for potential future use
+            sponsorsResult.sponsors
               .filter((sponsor: any) => sponsor.active)
               .map((sponsor: any) => ({
                 name: sponsor.name,
                 logo: sponsor.logo,
                 link: sponsor.website
               }));
-            setSponsors(activeSponsors);
           } else {
-            setSponsors([]);
+            // No sponsors found
           }
         } catch (sponsorError) {
           console.error('Error fetching sponsors:', sponsorError);
-          setSponsors([]);
         }
       } catch (error) {
         console.error('Error setting up data:', error);
@@ -79,6 +102,30 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, isCollege
       }
     };
   }, []);
+
+  // Get time-based greeting
+  const getTimeBasedGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  // Get role display name
+  const getRoleDisplayName = (role: string | null): string => {
+    if (!role) return '';
+    const roleMap: { [key: string]: string } = {
+      'admin': 'Administrator',
+      'college_admin': 'College Admin',
+      'college-admin': 'College Admin',
+      'leader': 'Leader',
+      'leaders': 'Leader',
+      'educator': 'Educator',
+      'educators': 'Educator',
+      'salesman': 'Salesman'
+    };
+    return roleMap[role.toLowerCase()] || role;
+  };
 
 
   const handleQuickAccess = (action: string) => {
@@ -132,11 +179,30 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, isCollege
           <div className="flex items-center justify-center">
             <div className="text-center">
               <Users className="w-16 h-16 mx-auto mb-4 text-white" />
-              <h3 className="text-2xl font-bold mb-2">College User Dashboard</h3>
+              <h3 className="text-2xl font-bold mb-2">colllege_admin panel</h3>
               <p className="text-white/80">Add and manage users for your college</p>
             </div>
           </div>
         </div>
+
+        {/* Welcome Greeting - Role Based */}
+        {userRole && (
+          <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-3xl font-bold mb-2">
+              <span style={{ color: '#000000' }}>{getTimeBasedGreeting()}</span>
+              {userName && (
+                <>
+                  <span style={{ color: '#000000' }}>, </span>
+                  <span style={{ color: '#9b0101' }}>{userName}</span>
+                </>
+              )}
+              <span style={{ color: '#000000' }}>!</span>
+            </h2>
+            <p className="text-xl" style={{ color: '#9b0101' }}>
+              Welcome, {getRoleDisplayName(userRole)}
+            </p>
+          </div>
+        )}
 
         {/* Latest Articles */}
         <div className="space-y-4">
@@ -303,6 +369,25 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, isCollege
               <span className="text-sm font-medium">Settings</span>
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Welcome Greeting - Role Based */}
+      {userRole && (
+        <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-3xl font-bold mb-2">
+            <span style={{ color: '#000000' }}>{getTimeBasedGreeting()}</span>
+            {userName && (
+              <>
+                <span style={{ color: '#000000' }}>, </span>
+                <span style={{ color: '#9b0101' }}>{userName}</span>
+              </>
+            )}
+            <span style={{ color: '#000000' }}>!</span>
+          </h2>
+          <p className="text-xl" style={{ color: '#9b0101' }}>
+            Welcome, {getRoleDisplayName(userRole)}
+          </p>
         </div>
       )}
 

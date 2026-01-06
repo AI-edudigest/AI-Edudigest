@@ -6,7 +6,6 @@ import {
   Trash2, 
   LogOut, 
   BarChart3,
-  UserPlus,
   AlertCircle,
   CheckCircle2,
   XCircle
@@ -72,29 +71,15 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Add College Modal State
+  // Add College Modal State (combined form for college and admin)
   const [showAddCollege, setShowAddCollege] = useState(false);
   const [newCollege, setNewCollege] = useState({
     name: '',
-    shortName: '',
     type: '',
-    affiliation: '',
-    location: '',
-    city: '',
     state: '',
-    pincode: '',
-    website: ''
-  });
-  
-  // Add College Admin Modal State
-  const [showAddAdmin, setShowAddAdmin] = useState(false);
-  const [newAdmin, setNewAdmin] = useState({
+    city: '',
     email: '',
-    firstName: '',
-    lastName: '',
-    password: '',
-    collegeId: '',
-    collegeName: ''
+    password: ''
   });
 
   const currentUser = getCurrentUser();
@@ -218,8 +203,13 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
   };
 
   const handleAddCollege = async () => {
-    if (!newCollege.name.trim()) {
-      setError('College name is required');
+    if (!newCollege.name.trim() || !newCollege.type.trim() || !newCollege.state.trim() || !newCollege.city.trim() || !newCollege.email.trim() || !newCollege.password.trim()) {
+      setError('All fields are required');
+      return;
+    }
+
+    if (newCollege.password.length < 6) {
+      setError('Password must be at least 6 characters');
       return;
     }
 
@@ -229,24 +219,54 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
     setError(null);
 
     try {
-      const result = await addCollege(newCollege, currentUser.uid);
-      if (result.success) {
-        setShowAddCollege(false);
-        setNewCollege({
-          name: '',
-          shortName: '',
-          type: '',
-          affiliation: '',
-          location: '',
-          city: '',
-          state: '',
-          pincode: '',
-          website: ''
-        });
-        await loadData();
-      } else {
-        setError(result.error || 'Failed to add college');
+      // First, create the college
+      const collegeData = {
+        name: newCollege.name,
+        type: newCollege.type,
+        state: newCollege.state,
+        city: newCollege.city,
+        shortName: '',
+        affiliation: '',
+        location: '',
+        pincode: '',
+        website: ''
+      };
+      
+      const collegeResult = await addCollege(collegeData, currentUser.uid);
+      if (!collegeResult.success) {
+        setError(collegeResult.error || 'Failed to add college');
+        setLoading(false);
+        return;
       }
+
+      // Then, create the college admin
+      const adminData = {
+        email: newCollege.email,
+        firstName: newCollege.name.split(' ')[0] || 'Admin',
+        lastName: newCollege.name.split(' ').slice(1).join(' ') || '',
+        password: newCollege.password,
+        collegeId: collegeResult.collegeId || '',
+        collegeName: newCollege.name
+      };
+
+      const adminResult = await addCollegeAdmin(adminData, currentUser.uid);
+      if (!adminResult.success) {
+        setError(adminResult.error || 'College created but failed to add admin');
+        setLoading(false);
+        return;
+      }
+
+      // Reset form and close modal
+      setShowAddCollege(false);
+      setNewCollege({
+        name: '',
+        type: '',
+        state: '',
+        city: '',
+        email: '',
+        password: ''
+      });
+      await loadData();
     } catch (err: any) {
       setError(err.message || 'Failed to add college');
     } finally {
@@ -254,39 +274,6 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const handleAddAdmin = async () => {
-    if (!newAdmin.email.trim() || !newAdmin.firstName.trim() || !newAdmin.lastName.trim() || !newAdmin.password.trim() || !newAdmin.collegeId) {
-      setError('All fields are required');
-      return;
-    }
-
-    if (!currentUser) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await addCollegeAdmin(newAdmin, currentUser.uid);
-      if (result.success) {
-        setShowAddAdmin(false);
-        setNewAdmin({
-          email: '',
-          firstName: '',
-          lastName: '',
-          password: '',
-          collegeId: '',
-          collegeName: ''
-        });
-        await loadData();
-      } else {
-        setError(result.error || 'Failed to add college admin');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to add college admin');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDeleteAdmin = async (adminId: string) => {
     if (!window.confirm('Are you sure you want to delete this college admin? This action cannot be undone.')) {
@@ -442,13 +429,6 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
             <Plus className="w-5 h-5" />
             <span>Add College</span>
           </button>
-          <button
-            onClick={() => setShowAddAdmin(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-[#9b0101] text-white rounded-lg hover:bg-[#7a0101] transition-colors"
-          >
-            <UserPlus className="w-5 h-5" />
-            <span>Add College Admin</span>
-          </button>
         </div>
 
         {/* Colleges List */}
@@ -507,6 +487,24 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
                         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                           <h4 className="font-semibold text-gray-900 dark:text-white mb-3">College Details</h4>
                           <div className="grid grid-cols-2 gap-4 text-sm">
+                            {college.type && (
+                              <div>
+                                <span className="text-gray-600 dark:text-gray-400">Type:</span>
+                                <span className="ml-2 text-gray-900 dark:text-white">{college.type}</span>
+                              </div>
+                            )}
+                            {college.city && (
+                              <div>
+                                <span className="text-gray-600 dark:text-gray-400">City:</span>
+                                <span className="ml-2 text-gray-900 dark:text-white">{college.city}</span>
+                              </div>
+                            )}
+                            {college.state && (
+                              <div>
+                                <span className="text-gray-600 dark:text-gray-400">State:</span>
+                                <span className="ml-2 text-gray-900 dark:text-white">{college.state}</span>
+                              </div>
+                            )}
                             {college.shortName && (
                               <div>
                                 <span className="text-gray-600 dark:text-gray-400">Short Name:</span>
@@ -523,12 +521,6 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
                               <div>
                                 <span className="text-gray-600 dark:text-gray-400">Location:</span>
                                 <span className="ml-2 text-gray-900 dark:text-white">{college.location}</span>
-                              </div>
-                            )}
-                            {college.state && (
-                              <div>
-                                <span className="text-gray-600 dark:text-gray-400">State:</span>
-                                <span className="ml-2 text-gray-900 dark:text-white">{college.state}</span>
                               </div>
                             )}
                             {college.website && (
@@ -610,16 +602,6 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
                         <div>
                           <div className="flex items-center justify-between mb-3">
                             <h4 className="font-semibold text-gray-900 dark:text-white">College Admins</h4>
-                            <button
-                              onClick={() => {
-                                setNewAdmin({ ...newAdmin, collegeId: college.id, collegeName: college.name });
-                                setShowAddAdmin(true);
-                              }}
-                              className="flex items-center space-x-1 px-3 py-1 text-sm bg-[#9b0101] text-white rounded hover:bg-[#7a0101] transition-colors"
-                            >
-                              <Plus className="w-4 h-4" />
-                              <span>Add Admin</span>
-                            </button>
                           </div>
                           {admins.length === 0 ? (
                             <p className="text-sm text-gray-500 dark:text-gray-400">No college admins yet.</p>
@@ -658,7 +640,7 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
       {/* Add College Modal */}
       {showAddCollege && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">Add New College</h3>
             </div>
@@ -673,86 +655,70 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
                   onChange={(e) => setNewCollege({ ...newCollege, name: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="Enter college name"
+                  required
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Short Name</label>
-                  <input
-                    type="text"
-                    value={newCollege.shortName}
-                    onChange={(e) => setNewCollege({ ...newCollege, shortName: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
-                  <input
-                    type="text"
-                    value={newCollege.type}
-                    onChange={(e) => setNewCollege({ ...newCollege, type: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="e.g., Engineering, Arts, etc."
-                  />
-                </div>
-              </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Affiliation</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Type <span className="text-red-600">*</span>
+                </label>
                 <input
                   type="text"
-                  value={newCollege.affiliation}
-                  onChange={(e) => setNewCollege({ ...newCollege, affiliation: e.target.value })}
+                  value={newCollege.type}
+                  onChange={(e) => setNewCollege({ ...newCollege, type: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="e.g., Engineering, Arts, etc."
+                  required
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">City</label>
-                  <input
-                    type="text"
-                    value={newCollege.city}
-                    onChange={(e) => setNewCollege({ ...newCollege, city: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">State</label>
-                  <input
-                    type="text"
-                    value={newCollege.state}
-                    onChange={(e) => setNewCollege({ ...newCollege, state: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Location</label>
-                  <input
-                    type="text"
-                    value={newCollege.location}
-                    onChange={(e) => setNewCollege({ ...newCollege, location: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pincode</label>
-                  <input
-                    type="text"
-                    value={newCollege.pincode}
-                    onChange={(e) => setNewCollege({ ...newCollege, pincode: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  State <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newCollege.state}
+                  onChange={(e) => setNewCollege({ ...newCollege, state: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  required
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Website</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  City <span className="text-red-600">*</span>
+                </label>
                 <input
-                  type="url"
-                  value={newCollege.website}
-                  onChange={(e) => setNewCollege({ ...newCollege, website: e.target.value })}
+                  type="text"
+                  value={newCollege.city}
+                  onChange={(e) => setNewCollege({ ...newCollege, city: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="https://example.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  College Email <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={newCollege.email}
+                  onChange={(e) => setNewCollege({ ...newCollege, email: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="admin@college.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Password <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={newCollege.password}
+                  onChange={(e) => setNewCollege({ ...newCollege, password: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Minimum 6 characters"
+                  required
                 />
               </div>
             </div>
@@ -762,15 +728,13 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
                   setShowAddCollege(false);
                   setNewCollege({
                     name: '',
-                    shortName: '',
                     type: '',
-                    affiliation: '',
-                    location: '',
-                    city: '',
                     state: '',
-                    pincode: '',
-                    website: ''
+                    city: '',
+                    email: '',
+                    password: ''
                   });
+                  setError(null);
                 }}
                 className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
@@ -788,117 +752,6 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
         </div>
       )}
 
-      {/* Add College Admin Modal */}
-      {showAddAdmin && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Add College Admin</h3>
-            </div>
-            <div className="p-6 space-y-4">
-              {!newAdmin.collegeId && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Select College <span className="text-red-600">*</span>
-                  </label>
-                  <select
-                    value={newAdmin.collegeId}
-                    onChange={(e) => {
-                      const college = colleges.find(c => c.id === e.target.value);
-                      setNewAdmin({ ...newAdmin, collegeId: e.target.value, collegeName: college?.name || '' });
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  >
-                    <option value="">Select a college</option>
-                    {colleges.map(college => (
-                      <option key={college.id} value={college.id}>{college.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {newAdmin.collegeId && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                  <p className="text-sm text-blue-800 dark:text-blue-300">
-                    <strong>College:</strong> {newAdmin.collegeName}
-                  </p>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    First Name <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newAdmin.firstName}
-                    onChange={(e) => setNewAdmin({ ...newAdmin, firstName: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Last Name <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newAdmin.lastName}
-                    onChange={(e) => setNewAdmin({ ...newAdmin, lastName: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email <span className="text-red-600">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={newAdmin.email}
-                  onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Password <span className="text-red-600">*</span>
-                </label>
-                <input
-                  type="password"
-                  value={newAdmin.password}
-                  onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="Minimum 6 characters"
-                />
-              </div>
-            </div>
-            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowAddAdmin(false);
-                  setNewAdmin({
-                    email: '',
-                    firstName: '',
-                    lastName: '',
-                    password: '',
-                    collegeId: '',
-                    collegeName: ''
-                  });
-                }}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddAdmin}
-                disabled={loading || !newAdmin.collegeId}
-                className="px-4 py-2 bg-[#9b0101] text-white rounded-lg hover:bg-[#7a0101] transition-colors disabled:opacity-50"
-              >
-                {loading ? 'Adding...' : 'Add Admin'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

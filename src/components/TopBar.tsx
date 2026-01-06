@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Bell, LogOut, X, Home, BookOpen, Lightbulb, Shield, Users, BarChart3, Megaphone, DollarSign, Target, Award, TrendingUp, Globe, Sparkles, FileText, Settings, User as UserIcon, Mail, Building2, Briefcase } from 'lucide-react';
-import { getNotifications, getUnreadNotificationCount, markNotificationAsRead, getCurrentUser, getUserProfile, db } from '../utils/firebase';
+import { getNotifications, getUnreadNotificationCount, markNotificationAsRead, getCurrentUser, db } from '../utils/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useSearch } from '../contexts/SearchContext';
 import AdsCarousel from './AdsCarousel';
 import AllNotificationsModal from './AllNotificationsModal';
+import RoleGuard from './common/RoleGuard';
 
 interface PageInfo {
   title: string;
@@ -32,7 +33,7 @@ interface TopBarProps {
   currentTopicName?: string | null;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ activeSection, onLogout, pageInfo, isAdmin, isCollegeAdmin, onAdminPanelToggle, currentTopicName }) => {
+const TopBar: React.FC<TopBarProps> = ({ onLogout, pageInfo, isAdmin, onAdminPanelToggle, currentTopicName }) => {
   const { searchQuery, setSearchQuery, performSearch } = useSearch();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -365,16 +366,18 @@ const TopBar: React.FC<TopBarProps> = ({ activeSection, onLogout, pageInfo, isAd
             )}
           </div>
 
-          {/* Admin Panel Button */}
-          {isAdmin && onAdminPanelToggle && (
-            <button 
-              onClick={onAdminPanelToggle}
-              className="p-2 text-gray-400 dark:text-gray-500 hover:text-[#9b0101] dark:hover:text-[#9b0101] transition-colors duration-200"
-              title="Admin Panel"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
-          )}
+          {/* Admin Panel Button - Only visible to admins */}
+          <RoleGuard config={{ only: ['admin'] }}>
+            {onAdminPanelToggle && (
+              <button 
+                onClick={onAdminPanelToggle}
+                className="p-2 text-gray-400 dark:text-gray-500 hover:text-[#9b0101] dark:hover:text-[#9b0101] transition-colors duration-200"
+                title="Admin Panel"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+            )}
+          </RoleGuard>
 
           {/* User Profile Dropdown */}
           <div className="relative profile-dropdown-container">
