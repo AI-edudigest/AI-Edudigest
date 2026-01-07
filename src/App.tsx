@@ -20,7 +20,6 @@ import AIForCostCutting from './components/pages/AIForCostCutting';
 import AIForCollegeBranding from './components/pages/AIForCollegeBranding';
 import EMagazinePage from './components/pages/EMagazinePage';
 import LoginPage from './components/pages/LoginPage';
-import SignUpPage from './components/pages/SignUpPage';
 import AdminLayout from './components/admin/AdminLayout';
 import SidebarTabContent from './components/pages/SidebarTabContent';
 import ProfileCompletionModal from './components/ProfileCompletionModal';
@@ -30,7 +29,6 @@ import CollegeDashboard from './components/college-admin/CollegeDashboard';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [showSignUp, setShowSignUp] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
   const [expandedMenus, setExpandedMenus] = useState<{ [key: string]: boolean }>({});
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -53,7 +51,6 @@ function App() {
   // Simple welcome screen states
   const [showSplash, setShowSplash] = useState(true);
   const [welcomeMode, setWelcomeMode] = useState<'login' | 'refresh'>('refresh');
-  const [isSignupProcess, setIsSignupProcess] = useState(false);
   
   // Plan expiry states
   const [planExpired, setPlanExpired] = useState(false);
@@ -116,11 +113,8 @@ function App() {
 
   const handleLoginSuccess = () => {
     // Authentication state will be handled by Firebase auth state change
-    // Only show welcome screen if not in signup process
-    if (!isSignupProcess) {
-      setWelcomeMode('login');
-      setShowSplash(true);
-    }
+    setWelcomeMode('login');
+    setShowSplash(true);
   };
 
   const handleLogout = async () => {
@@ -128,7 +122,6 @@ function App() {
       localStorage.removeItem('sessionId');
       const { signOutUser } = await import('./utils/firebase');
       await signOutUser();
-      setShowSignUp(false);
       setShowAdminPanel(false);
       setActiveSection('home');
     } catch (error) {
@@ -144,22 +137,6 @@ function App() {
     setShowAdminPanel(false);
   };
 
-  const handleShowSignUp = () => {
-    setShowSignUp(true);
-  };
-
-  const handleBackToLogin = () => {
-    setShowSignUp(false);
-  };
-
-  const handleSignUpSuccess = () => {
-    setShowSignUp(false);
-    // Mark that we're in signup process to prevent double welcome screen
-    setIsSignupProcess(true);
-    // Show welcome screen for new user after successful signup
-    setWelcomeMode('login');
-    setShowSplash(true);
-  };
 
   const handleSplashFinish = () => {
     setShowSplash(false);
@@ -254,7 +231,6 @@ function App() {
           // 4. Not a salesman (salesmen don't need profile completion)
           if (user.photoURL && 
               (!profile?.institution || profile.institution === '' || profile.institution === 'Not specified') &&
-              !isSignupProcess &&
               role !== 'salesman') {
             // Small delay to ensure UI is ready
             setTimeout(() => {
@@ -285,15 +261,10 @@ function App() {
         setPlanExpiringDays(null);
       }
       setCheckingAuth(false);
-      
-      // Reset signup process flag after auth check
-      if (isSignupProcess) {
-        setIsSignupProcess(false);
-      }
     });
 
     return () => unsubscribe();
-  }, [isSignupProcess]);
+  }, []);
 
   // Subscribe to session id
   useEffect(() => {
@@ -458,15 +429,6 @@ function App() {
   };
 
 
-  // Show sign up page if sign up is requested
-  if (!isLoggedIn && showSignUp) {
-    return (
-      <SignUpPage 
-        onSignUpSuccess={handleSignUpSuccess} 
-        onBackToLogin={handleBackToLogin} 
-      />
-    );
-  }
 
   // Show simple welcome screen while checking authentication or if splash is active
   if (checkingAuth || showSplash) {
@@ -486,7 +448,7 @@ function App() {
 
   // Show login page if not logged in (after splash)
   if (!isLoggedIn) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} onShowSignUp={handleShowSignUp} />;
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
   // Show admin panel if admin user and admin panel is toggled

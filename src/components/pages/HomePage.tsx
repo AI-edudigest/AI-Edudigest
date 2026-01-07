@@ -42,7 +42,11 @@ const HomePage: React.FC<HomePageProps> = ({ onResourceClick, isAdmin, isCollege
           
           const { profile } = await getUserProfile(user.uid);
           if (profile?.firstName) {
-            setUserName(profile.firstName);
+            // Combine firstName and lastName for full name
+            const fullName = profile.lastName 
+              ? `${profile.firstName} ${profile.lastName}`.trim()
+              : profile.firstName;
+            setUserName(fullName);
           }
         }
       } catch (error) {
