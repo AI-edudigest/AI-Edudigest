@@ -199,12 +199,41 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     
-    // NEW: Allow authenticated users to read events, only leaders and admins can create them
+    // NEW: Allow authenticated users to read events, only leaders, faculty, college admins, and platform admins can create them
     match /events/{document} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && 
+      allow create: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'leaders');
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'leader' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'leaders' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'faculty' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'educator' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'educators' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'college_admin' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'college-admin');
+      allow update: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'leader' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'leaders' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'faculty' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'educator' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'educators' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'college_admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'college-admin') &&
+         resource.data.createdBy == request.auth.uid);
+      allow delete: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || 
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'leader' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'leaders' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'faculty' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'educator' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'educators' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'college_admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'college-admin') &&
+         resource.data.createdBy == request.auth.uid);
     }
     
     // Allow authenticated users to read news updates, only admins can create/update them
@@ -231,6 +260,15 @@ service cloud.firestore {
     // Allow test collection for debugging
     match /test/{document} {
       allow read, write: if request.auth != null;
+    }
+
+    // Student counts per college (collegeStudentCounts)
+    // Written only by Cloud Functions; readable by admins & salesmen for dashboards
+    match /collegeStudentCounts/{collegeId} {
+      // Admins and active salesmen can read counters
+      allow read: if request.auth != null && (isAdmin() || isSalesman());
+      // No direct client writes to keep integrity; Cloud Functions use admin privileges
+      allow write: if false;
     }
   }
 }

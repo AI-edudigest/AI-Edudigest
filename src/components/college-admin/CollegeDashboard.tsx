@@ -31,6 +31,7 @@ interface CollegeUser {
 interface College {
   id: string;
   name: string;
+  collegeId?: string;
   planDurationDays?: number;
   userLimit?: number;
   planStartDate?: any;
@@ -54,7 +55,7 @@ const CollegeDashboard: React.FC<CollegeDashboardProps> = ({ onBackToHome, onLog
     email: '',
     firstName: '',
     lastName: '',
-    role: 'leader' as 'leader' | 'educator',
+    role: 'leader' as 'leader' | 'educator' | 'faculty' | 'admin_staff' | 'administrative_staff',
     password: ''
   });
   const [addingUser, setAddingUser] = useState(false);
@@ -229,7 +230,12 @@ const CollegeDashboard: React.FC<CollegeDashboardProps> = ({ onBackToHome, onLog
                 {college && (
                   <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center mt-1">
                     <Building2 className="w-4 h-4 mr-1" />
-                    {college.name}
+                    <span>{college.name}</span>
+                    {college.collegeId && (
+                      <span className="ml-2 font-mono text-xs text-gray-500 dark:text-gray-400">
+                        (ID: <span className="text-gray-700 dark:text-gray-300 font-semibold">{college.collegeId}</span>)
+                      </span>
+                    )}
                   </p>
                 )}
               </div>
@@ -549,12 +555,13 @@ const CollegeDashboard: React.FC<CollegeDashboardProps> = ({ onBackToHome, onLog
                 </label>
                 <select
                   value={newUser.role}
-                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value as 'leader' | 'educator' })}
+                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value as 'leader' | 'educator' | 'faculty' | 'admin_staff' | 'administrative_staff' })}
                   required
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent dark:bg-gray-700 dark:text-white"
                 >
                   <option value="leader">Leader</option>
-                  <option value="educator">Educator</option>
+                  <option value="faculty">Faculty</option>
+                  <option value="admin_staff">Administrative staff</option>
                 </select>
               </div>
 

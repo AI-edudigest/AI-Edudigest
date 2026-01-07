@@ -161,6 +161,8 @@ Please check:
       case 'college-admin':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
       case 'faculty':
+      case 'educator':
+      case 'educators':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
       case 'leaders':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
@@ -369,11 +371,15 @@ Please check:
                       <td className="py-3 px-4">
                         <div className="flex items-center space-x-2">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
-                            {user.role === 'college_admin' || user.role === 'college-admin' 
-                              ? 'college_admin' 
-                              : user.role === 'admin' 
+                            {user.role === 'college_admin' || user.role === 'college-admin'
+                              ? 'college_admin'
+                              : user.role === 'admin'
                                 ? 'Administrator'
-                                : user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                : user.role === 'educator' || user.role === 'educators' || user.role === 'faculty'
+                                  ? 'Faculty'
+                                  : user.role === 'admin_staff' || user.role === 'administrative_staff'
+                                    ? 'Administrative staff'
+                                    : user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                           </span>
                           {user.role === 'salesman' && (
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -398,7 +404,8 @@ Please check:
                                 <option value="college_admin">college_admin</option>
                                 <option value="salesman">salesman</option>
                                 <option value="leader">Leader</option>
-                                <option value="educator">Educator</option>
+                                <option value="faculty">Faculty</option>
+                                <option value="admin_staff">Administrative staff</option>
                                 <option value="admin">administrator</option>
                               </select>
                               <button

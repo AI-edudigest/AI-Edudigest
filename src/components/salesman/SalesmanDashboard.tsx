@@ -25,6 +25,7 @@ import {
 interface College {
   id: string;
   name: string;
+  collegeId?: string; // Human-readable short ID stored in Firestore (max 5 chars)
   shortName?: string;
   type?: string;
   affiliation?: string;
@@ -39,6 +40,7 @@ interface College {
   userLimit?: number;
   planStartDate?: any;
   planEndDate?: any;
+  totalStudents?: number;
 }
 
 interface CollegeAdmin {
@@ -55,6 +57,7 @@ interface CollegeStats {
   leaders: number;
   educators: number;
   faculty: number;
+  administrativeStaff: number;
   students: number;
   total: number;
 }
@@ -454,7 +457,14 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
                       onClick={() => handleCollegeSelect(college.id)}
                     >
                       <div className="flex-1 flex items-center gap-3">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{college.name}</h3>
+                        <div className="flex flex-col">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{college.name}</h3>
+                          {college.collegeId && (
+                            <span className="text-xs font-mono text-gray-600 dark:text-gray-400">
+                              ID: <span className="text-gray-900 dark:text-white">{college.collegeId}</span>
+                            </span>
+                          )}
+                        </div>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -531,14 +541,37 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
                                 </a>
                               </div>
                             )}
+                            <div>
+                              <span className="text-gray-600 dark:text-gray-400">Total Students:</span>
+                              <span className="ml-2 text-gray-900 dark:text-white font-medium">
+                                {typeof college.totalStudents === 'number' ? college.totalStudents : stats.students}
+                              </span>
+                            </div>
                           </div>
                         </div>
 
                         {/* Subscription Plan */}
-                        {(college.planDurationDays || college.userLimit) && (
+                        {(college.planDurationDays || college.userLimit || college.planStartDate || college.planEndDate) && (
                           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
                             <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Subscription Plan</h4>
                             <div className="grid grid-cols-2 gap-4 text-sm">
+                              {/* Plan Status */}
+                              {college.planEndDate && (
+                                <div>
+                                  <span className="text-gray-600 dark:text-gray-400">Status:</span>
+                                  <span
+                                    className={`ml-2 font-semibold ${
+                                      (college.planEndDate.toDate ? college.planEndDate.toDate() : new Date(college.planEndDate)) < new Date()
+                                        ? 'text-red-600 dark:text-red-400'
+                                        : 'text-green-700 dark:text-green-400'
+                                    }`}
+                                  >
+                                    {(college.planEndDate.toDate ? college.planEndDate.toDate() : new Date(college.planEndDate)) < new Date()
+                                      ? 'Expired'
+                                      : 'Active'}
+                                  </span>
+                                </div>
+                              )}
                               {college.planDurationDays && (
                                 <div>
                                   <span className="text-gray-600 dark:text-gray-400">Duration:</span>
@@ -584,12 +617,12 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
                               <p className="text-sm text-gray-600 dark:text-gray-400">Leader</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.educators}</p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">Educator</p>
+                              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.educators + stats.faculty}</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Faculty</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.faculty}</p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">Faculty</p>
+                              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.administrativeStaff}</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Administrative staff</p>
                             </div>
                             <div className="text-center">
                               <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.students}</p>

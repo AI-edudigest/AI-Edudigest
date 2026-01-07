@@ -448,7 +448,7 @@ const SidebarTabsManager: React.FC = () => {
                     { value: 'admin', label: 'Administrator', color: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' },
                     { value: 'college_admin', label: 'College Admin', color: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' },
                     { value: 'leader', label: 'Leader', color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' },
-                    { value: 'educator', label: 'Educator', color: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' },
+                    { value: 'faculty', label: 'Faculty', color: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' },
                     { value: 'salesman', label: 'Salesman', color: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800' }
                   ].map((role) => (
                     <label
@@ -491,7 +491,9 @@ const SidebarTabsManager: React.FC = () => {
                           'admin': 'Administrator',
                           'college_admin': 'College Admin',
                           'leader': 'Leader',
-                          'educator': 'Educator',
+                          'educator': 'Faculty',
+                          'educators': 'Faculty',
+                          'faculty': 'Faculty',
                           'salesman': 'Salesman'
                         };
                         return roleMap[r] || r;
@@ -958,7 +960,7 @@ const SidebarTabsManager: React.FC = () => {
                       type="color"
                       onChange={(e) => {
                         // Enable CSS mode for proper styling
-                        document.execCommand('styleWithCSS', false, true);
+                        document.execCommand('styleWithCSS', false, 'true');
                         document.execCommand('foreColor', false, e.target.value);
                         editorRef.current?.focus();
                       }}
@@ -971,7 +973,7 @@ const SidebarTabsManager: React.FC = () => {
                       type="color"
                       onChange={(e) => {
                         // Enable CSS mode for proper styling
-                        document.execCommand('styleWithCSS', false, true);
+                        document.execCommand('styleWithCSS', false, 'true');
                         document.execCommand('backColor', false, e.target.value);
                         editorRef.current?.focus();
                       }}
@@ -1008,8 +1010,13 @@ const SidebarTabsManager: React.FC = () => {
                       }}
                       onPaste={(e) => {
                         e.preventDefault();
-                        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-                        document.execCommand('insertText', false, text);
+                        const text =
+                          e.clipboardData?.getData('text/plain') ||
+                          ((window as any).clipboardData?.getData('text') as string | undefined) ||
+                          '';
+                        if (text) {
+                          document.execCommand('insertText', false, text);
+                        }
                       }}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-b-lg focus:ring-2 focus:ring-[#9b0101] focus:border-[#9b0101] bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-h-[200px] focus:outline-none"
                       style={{ 

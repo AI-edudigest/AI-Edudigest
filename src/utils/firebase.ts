@@ -2168,6 +2168,59 @@ export const permanentlyDeleteOldItems = async () => {
 
 // ==================== SALESMAN FUNCTIONS ====================
 
+// Helper: Generate a short, human-readable collegeId (max 5 characters)
+// Example format: \"MS101\" (first 2 letters of college name + 3 digits starting from 101)
+// Format: College name prefix + sequential number (MS101, MS102, SH201, etc.)
+const generateReadableCollegeId = async (collegeName: string): Promise<string> => {
+  // Extract first 2 letters from college name (uppercase, A-Z only)
+  const getPrefix = (name: string): string => {
+    if (!name) return 'CL';
+    const letters = name
+      .toUpperCase()
+      .replace(/[^A-Z]/g, '')
+      .slice(0, 2);
+    return letters.length >= 2 ? letters : 'CL';
+  };
+
+  const prefix = getPrefix(collegeName);
+
+  try {
+    // Query all colleges to find existing IDs with same prefix
+    const collegesRef = collection(db, 'colleges');
+    const snapshot = await getDocs(collegesRef);
+    
+    // Extract all collegeIds that start with this prefix
+    const existingNumbers: number[] = [];
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (data.collegeId && typeof data.collegeId === 'string' && data.collegeId.startsWith(prefix)) {
+        // Extract the numeric part (last 3 digits)
+        const numericPart = parseInt(data.collegeId.slice(2), 10);
+        if (!isNaN(numericPart) && numericPart >= 101) {
+          existingNumbers.push(numericPart);
+        }
+      }
+    });
+
+    // Find the next available number
+    let nextNumber = 101; // Start from 101
+    if (existingNumbers.length > 0) {
+      const maxNumber = Math.max(...existingNumbers);
+      nextNumber = maxNumber + 1;
+    }
+
+    // Format: prefix + 3-digit number (e.g., MS101, MS102, SH201)
+    const collegeId = `${prefix}${nextNumber.toString().padStart(3, '0')}`;
+    
+    // Ensure it's max 5 characters (should be fine: 2 letters + 3 digits = 5)
+    return collegeId.slice(0, 5);
+  } catch (error) {
+    console.error('Error generating college ID:', error);
+    // Fallback: prefix + 101
+    return `${prefix}101`;
+  }
+};
+
 // Colleges Management Functions
 export const addCollege = async (collegeData: {
   name: string;
@@ -2186,7 +2239,12 @@ export const addCollege = async (collegeData: {
       throw new Error('Unauthorized: Only the creating salesman can add colleges');
     }
 
+    // Generate a short, readable collegeId (max 5 characters)
+    // Format: First 2 letters of college name + 3 digits (e.g., MS101, SH201)
+    const readableCollegeId = await generateReadableCollegeId(collegeData.name);
+
     const collegeDoc = {
+      collegeId: readableCollegeId,
       name: collegeData.name,
       shortName: collegeData.shortName || '',
       type: collegeData.type || '',
@@ -2196,16 +2254,18 @@ export const addCollege = async (collegeData: {
       state: collegeData.state || '',
       pincode: collegeData.pincode || '',
       website: collegeData.website || '',
+      status: 'active', // Set status to active by default
       createdBySalesman: salesmanUid,
       createdAt: new Date(),
       updatedAt: new Date()
     };
 
     const docRef = await addDoc(collection(db, 'colleges'), collegeDoc);
-    return { success: true, collegeId: docRef.id, error: null };
+    // Return both Firestore document ID and the human-readable collegeId field
+    return { success: true, collegeId: docRef.id, readableCollegeId, error: null };
   } catch (error: any) {
     console.error('Error adding college:', error);
-    return { success: false, collegeId: null, error: error.message };
+    return { success: false, collegeId: null, readableCollegeId: null, error: error.message };
   }
 };
 
@@ -2299,24 +2359,20 @@ export const addCollegeAdmin = async (adminData: {
       throw new Error('Unauthorized: College does not belong to this salesman');
     }
 
-    // Create auth user
-    const userCredential = await createUserWithEmailAndPassword(auth, adminData.email, adminData.password);
-    const newUser = userCredential.user;
+    // Call Cloud Function to create college admin (uses Admin SDK, salesman stays logged in)
+    const createCollegeAdmin = httpsCallable(functions, 'createCollegeAdmin');
 
-    // Create user document in Firestore
-    await setDoc(doc(db, 'users', newUser.uid), {
+    const result = await createCollegeAdmin({
       email: adminData.email,
+      password: adminData.password,
       firstName: adminData.firstName,
       lastName: adminData.lastName,
-      role: 'college_admin',
-      institution: adminData.collegeName,
-      institutionId: adminData.collegeId,
-      createdBySalesman: salesmanUid,
-      createdAt: new Date(),
-      active: true
+      collegeId: adminData.collegeId,
+      collegeName: adminData.collegeName
     });
 
-    return { success: true, userId: newUser.uid, error: null };
+    const resultData = result.data as { success: boolean; userId: string };
+    return { success: true, userId: resultData.userId, error: null };
   } catch (error: any) {
     console.error('Error adding college admin:', error);
     return { success: false, userId: null, error: error.message };
@@ -2420,6 +2476,9 @@ export const getCollegeUserStats = async (collegeId: string, salesmanUid: string
       throw new Error('Unauthorized: College does not belong to this salesman');
     }
 
+    // Get the readable collegeId from college document
+    const readableCollegeId = collegeData.collegeId || collegeId;
+
     const usersRef = collection(db, 'users');
     // Filter by both institutionId and createdBySalesman to match security rules
     const q = query(
@@ -2433,20 +2492,52 @@ export const getCollegeUserStats = async (collegeId: string, salesmanUid: string
       leaders: 0,
       educators: 0,
       faculty: 0,
+      administrativeStaff: 0,
       students: 0,
       total: 0
+    } as {
+      leaders: number;
+      educators: number;
+      faculty: number;
+      administrativeStaff: number;
+      students: number;
+      total: number;
     };
 
     snapshot.docs.forEach(doc => {
       const data = doc.data();
-      const role = data.role || 'user';
+      const roleRaw = (data.role || '').toString().toLowerCase();
       stats.total++;
       
-      if (role === 'leader' || role === 'leaders') stats.leaders++;
-      else if (role === 'educator' || role === 'educators') stats.educators++;
-      else if (role === 'faculty') stats.faculty++;
-      else if (role === 'student') stats.students++;
+      if (roleRaw === 'leader' || roleRaw === 'leaders') stats.leaders++;
+      else if (roleRaw === 'educator' || roleRaw === 'educators') stats.educators++;
+      else if (roleRaw === 'faculty') stats.faculty++;
+      else if (
+        roleRaw === 'admin_staff' ||
+        roleRaw === 'administrative_staff' ||
+        roleRaw === 'staff' ||
+        roleRaw === 'non_teaching'
+      ) {
+        stats.administrativeStaff++;
+      }
+      else if (roleRaw === 'student') stats.students++;
     });
+
+    // Get student count from Student App (Project B) via counter document
+    try {
+      const counterRef = doc(db, 'collegeStudentCounts', readableCollegeId);
+      const counterDoc = await getDoc(counterRef);
+      if (counterDoc.exists()) {
+        const counterData = counterDoc.data();
+        const studentAppCount = counterData.studentCount || 0;
+        // Add Student App students to the count
+        stats.students += studentAppCount;
+        stats.total += studentAppCount;
+      }
+    } catch (counterError) {
+      // If counter document doesn't exist or error reading it, continue without it
+      console.warn('Could not read student count counter:', counterError);
+    }
     
     return { stats, error: null };
   } catch (error: any) {
@@ -2459,48 +2550,144 @@ export const getCollegeUserStats = async (collegeId: string, salesmanUid: string
 export const subscribeToCollegeUserStats = (
   collegeId: string, 
   salesmanUid: string, 
-  callback: (stats: { leaders: number; educators: number; faculty: number; students: number; total: number } | null) => void
+  callback: (stats: { leaders: number; educators: number; faculty: number; administrativeStaff: number; students: number; total: number } | null) => void
 ) => {
-  try {
-    const usersRef = collection(db, 'users');
-    // Filter by both institutionId and createdBySalesman to match security rules
-    const q = query(
-      usersRef, 
-      where('institutionId', '==', collegeId),
-      where('createdBySalesman', '==', salesmanUid)
-    );
-    
-    return onSnapshot(q, (snapshot) => {
-      console.log(`📊 Real-time update for college ${collegeId}: ${snapshot.size} users`);
-      const stats = {
-        leaders: 0,
-        educators: 0,
-        faculty: 0,
-        students: 0,
-        total: 0
-      };
+  let unsubscribeUsers: (() => void) | null = null;
+  let unsubscribeCounter: (() => void) | null = null;
 
-      snapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const role = data.role || 'user';
-        stats.total++;
-        
-        if (role === 'leader' || role === 'leaders') stats.leaders++;
-        else if (role === 'educator' || role === 'educators') stats.educators++;
-        else if (role === 'faculty') stats.faculty++;
-        else if (role === 'student') stats.students++;
+  const cleanup = () => {
+    if (unsubscribeUsers) unsubscribeUsers();
+    if (unsubscribeCounter) unsubscribeCounter();
+  };
+
+  try {
+    // Get college document to get readable collegeId
+    getDoc(doc(db, 'colleges', collegeId)).then((collegeDoc) => {
+      if (!collegeDoc.exists()) {
+        callback(null);
+        return;
+      }
+      const collegeData = collegeDoc.data();
+      const readableCollegeId = collegeData.collegeId || collegeId;
+
+      const usersRef = collection(db, 'users');
+      // Filter by both institutionId and createdBySalesman to match security rules
+      const q = query(
+        usersRef, 
+        where('institutionId', '==', collegeId),
+        where('createdBySalesman', '==', salesmanUid)
+      );
+      
+      // Subscribe to users collection
+      unsubscribeUsers = onSnapshot(q, async (snapshot) => {
+        console.log(`📊 Real-time update for college ${collegeId}: ${snapshot.size} users`);
+        const stats = {
+          leaders: 0,
+          educators: 0,
+          faculty: 0,
+          administrativeStaff: 0,
+          students: 0,
+          total: 0
+        };
+
+        snapshot.docs.forEach(doc => {
+          const data = doc.data();
+          const roleRaw = (data.role || '').toString().toLowerCase();
+          stats.total++;
+          
+          if (roleRaw === 'leader' || roleRaw === 'leaders') stats.leaders++;
+          else if (roleRaw === 'educator' || roleRaw === 'educators') stats.educators++;
+          else if (roleRaw === 'faculty') stats.faculty++;
+          else if (
+            roleRaw === 'admin_staff' ||
+            roleRaw === 'administrative_staff' ||
+            roleRaw === 'staff' ||
+            roleRaw === 'non_teaching'
+          ) {
+            stats.administrativeStaff++;
+          }
+          else if (roleRaw === 'student') stats.students++;
+        });
+
+        // Get student count from Student App (Project B) via counter document
+        try {
+          const counterRef = doc(db, 'collegeStudentCounts', readableCollegeId);
+          const counterDoc = await getDoc(counterRef);
+          if (counterDoc.exists()) {
+            const counterData = counterDoc.data();
+            const studentAppCount = counterData.studentCount || 0;
+            // Add Student App students to the count
+            stats.students += studentAppCount;
+            stats.total += studentAppCount;
+          }
+        } catch (counterError) {
+          // If counter document doesn't exist, continue without it
+          console.warn('Could not read student count counter:', counterError);
+        }
+
+        console.log(`📈 Updated stats for college ${collegeId}:`, stats);
+        callback(stats);
+      }, (error) => {
+        console.error('Error in college user stats subscription:', error);
+        callback(null);
       });
 
-      console.log(`📈 Updated stats for college ${collegeId}:`, stats);
-      callback(stats);
-    }, (error) => {
-      console.error('Error in college user stats subscription:', error);
+      // Also subscribe to counter document for real-time updates
+      const counterRef = doc(db, 'collegeStudentCounts', readableCollegeId);
+      unsubscribeCounter = onSnapshot(counterRef, (counterSnapshot) => {
+        // When counter updates, re-fetch users to get updated stats
+        if (counterSnapshot.exists()) {
+          getDocs(q).then((usersSnapshot) => {
+            const stats = {
+              leaders: 0,
+              educators: 0,
+              faculty: 0,
+              administrativeStaff: 0,
+              students: 0,
+              total: 0
+            };
+
+            usersSnapshot.docs.forEach(doc => {
+              const data = doc.data();
+              const roleRaw = (data.role || '').toString().toLowerCase();
+              stats.total++;
+              
+              if (roleRaw === 'leader' || roleRaw === 'leaders') stats.leaders++;
+              else if (roleRaw === 'educator' || roleRaw === 'educators') stats.educators++;
+              else if (roleRaw === 'faculty') stats.faculty++;
+              else if (
+                roleRaw === 'admin_staff' ||
+                roleRaw === 'administrative_staff' ||
+                roleRaw === 'staff' ||
+                roleRaw === 'non_teaching'
+              ) {
+                stats.administrativeStaff++;
+              }
+              else if (roleRaw === 'student') stats.students++;
+            });
+
+            const counterData = counterSnapshot.data();
+            const studentAppCount = counterData.studentCount || 0;
+            stats.students += studentAppCount;
+            stats.total += studentAppCount;
+
+            callback(stats);
+          }).catch((error) => {
+            console.error('Error fetching users after counter update:', error);
+          });
+        }
+      });
+    }).catch((error) => {
+      console.error('Error getting college document:', error);
       callback(null);
     });
+
+    // Return cleanup function
+    return cleanup;
   } catch (error: any) {
     console.error('Error setting up college user stats subscription:', error);
     callback(null);
-    return () => {}; // Return empty unsubscribe function
+    return cleanup; // Return cleanup function
   }
 };
 
@@ -2521,12 +2708,12 @@ export const getCollegeUsersByCollegeAdmin = async (collegeAdminUid: string) => 
       throw new Error('College ID not found');
     }
 
-    // Get users (leader, educator) for this college
+    // Get users (leader, faculty/educator, administrative staff) for this college
     const usersRef = collection(db, 'users');
     const q = query(
       usersRef,
       where('institutionId', '==', collegeId),
-      where('role', 'in', ['leader', 'educator'])
+      where('role', 'in', ['leader', 'educator', 'faculty', 'admin_staff', 'administrative_staff'])
     );
     const snapshot = await getDocs(q);
     
@@ -2626,13 +2813,14 @@ export const addCollegeUser = async (userData: {
   email: string;
   firstName: string;
   lastName: string;
-  role: 'leader' | 'educator';
+  role: 'leader' | 'educator' | 'faculty' | 'admin_staff' | 'administrative_staff';
   password: string;
 }, collegeAdminUid: string) => {
   try {
     // Validate role
-    if (userData.role !== 'leader' && userData.role !== 'educator') {
-      throw new Error('Invalid role. Only leader and educator roles are allowed.');
+    const allowedRoles = ['leader', 'educator', 'faculty', 'admin_staff', 'administrative_staff'];
+    if (!allowedRoles.includes(userData.role)) {
+      throw new Error('Invalid role. Only leader, faculty, and administrative staff roles are allowed.');
     }
 
     // Get college admin's profile to get their collegeId and college name
@@ -2817,6 +3005,7 @@ export const createCollegeByAdmin = async (collegeData: {
       state: collegeData.state || '',
       pincode: collegeData.pincode || '',
       website: collegeData.website || '',
+      status: 'active', // Set status to active by default
       createdBySalesman: collegeData.createdBySalesman || '',
       userLimit: userLimit,
       planDurationDays: collegeData.planDurationDays,
