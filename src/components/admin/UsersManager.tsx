@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Shield, User, Mail, Calendar, Edit, Clock, AlertCircle, Search, Filter, X, Building2, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
-import { getAllUsers, updateUserRole, updateUserActive, getCurrentUser, deleteUser } from '../../utils/firebase';
+import { Users, Shield, User, Mail, Calendar, Edit, Clock, AlertCircle, Search, Filter, X, Building2, Trash2, ToggleLeft, ToggleRight, Plus } from 'lucide-react';
+import { getAllUsers, updateUserRole, updateUserActive, getCurrentUser, deleteUser, createUserByAdmin } from '../../utils/firebase';
 
 interface User {
   id: string;
@@ -23,6 +23,16 @@ const UsersManager: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isFiltered, setIsFiltered] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [newUser, setNewUser] = useState({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    role: 'salesman'
+  });
 
   useEffect(() => {
     fetchUsers();
@@ -227,6 +237,52 @@ Please check:
     }
   };
 
+  const handleCreateUser = async () => {
+    if (!newUser.email || !newUser.password || !newUser.firstName || !newUser.lastName) {
+      setCreateError('All fields are required');
+      return;
+    }
+
+    if (newUser.password.length < 6) {
+      setCreateError('Password must be at least 6 characters');
+      return;
+    }
+
+    setCreating(true);
+    setCreateError(null);
+
+    try {
+      const result = await createUserByAdmin({
+        email: newUser.email,
+        password: newUser.password,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        role: newUser.role
+      });
+
+      if (result.success) {
+        // Reset form
+        setNewUser({
+          email: '',
+          password: '',
+          firstName: '',
+          lastName: '',
+          role: 'salesman'
+        });
+        setShowCreateModal(false);
+        // Refresh users list
+        await fetchUsers();
+      } else {
+        setCreateError(result.error || 'Failed to create user');
+      }
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      setCreateError(error.message || 'Failed to create user');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -272,8 +328,15 @@ Please check:
             />
           </div>
           <button
-            onClick={handleFilter}
+            onClick={() => setShowCreateModal(true)}
             className="px-4 py-2 bg-[#9b0101] text-white rounded-lg hover:bg-[#7a0101] transition-colors flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create User</span>
+          </button>
+          <button
+            onClick={handleFilter}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2"
           >
             <Filter className="w-4 h-4" />
             <span>Filter</span>
@@ -488,6 +551,144 @@ Please check:
           </div>
         </div>
       </div>
+
+      {/* Create User Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Create New User</h3>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setCreateError(null);
+                  setNewUser({
+                    email: '',
+                    password: '',
+                    firstName: '',
+                    lastName: '',
+                    role: 'salesman'
+                  });
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {createError && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                  <div className="flex items-start">
+                    <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 mr-2 flex-shrink-0" />
+                    <p className="text-sm text-red-800 dark:text-red-300">{createError}</p>
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  First Name *
+                </label>
+                <input
+                  type="text"
+                  value={newUser.firstName}
+                  onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#9b0101]"
+                  placeholder="Enter first name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Last Name *
+                </label>
+                <input
+                  type="text"
+                  value={newUser.lastName}
+                  onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#9b0101]"
+                  placeholder="Enter last name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#9b0101]"
+                  placeholder="Enter email address"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Password *
+                </label>
+                <input
+                  type="password"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#9b0101]"
+                  placeholder="Enter password (min 6 characters)"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Role *
+                </label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#9b0101]"
+                >
+                  <option value="salesman">Salesman</option>
+                  <option value="college_admin">College Admin</option>
+                  <option value="admin">Administrator</option>
+                  <option value="leader">Leader</option>
+                  <option value="faculty">Faculty</option>
+                  <option value="administrative_staff">Administrative Staff</option>
+                </select>
+              </div>
+              <div className="flex items-center justify-end space-x-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setCreateError(null);
+                    setNewUser({
+                      email: '',
+                      password: '',
+                      firstName: '',
+                      lastName: '',
+                      role: 'salesman'
+                    });
+                  }}
+                  className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  disabled={creating}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateUser}
+                  disabled={creating}
+                  className="px-4 py-2 bg-[#9b0101] text-white rounded-lg hover:bg-[#7a0101] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  {creating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Creating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      <span>Create User</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

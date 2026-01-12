@@ -51,12 +51,14 @@ service cloud.firestore {
       );
       // Anyone authenticated can create their own user document
       // Salesmen can create college_admin users
-      // College admins can create users (leader, educator) for their college
+      // College admins can create users (leader, faculty, administrative_staff) for their college
       allow create: if request.auth != null && (
         request.auth.uid == userId ||
         (isSalesman() && request.resource.data.role == 'college_admin' && request.resource.data.createdBySalesman == request.auth.uid) ||
         (isCollegeAdmin() && 
-         (request.resource.data.role == 'leader' || request.resource.data.role == 'educator') &&
+         (request.resource.data.role == 'leader' || 
+          request.resource.data.role == 'faculty' || 
+          request.resource.data.role == 'administrative_staff') &&
          request.resource.data.institutionId == getCollegeId())
       );
       // Users can write to their own document
@@ -67,7 +69,9 @@ service cloud.firestore {
         (isCollegeAdmin() && 
          resource.data.institutionId == getCollegeId() &&
          request.resource.data.institutionId == getCollegeId() &&
-         (request.resource.data.role == 'leader' || request.resource.data.role == 'educator'))
+         (request.resource.data.role == 'leader' || 
+          request.resource.data.role == 'faculty' || 
+          request.resource.data.role == 'administrative_staff'))
       );
       // Admins can delete any user
       // Salesmen can delete college_admin users they created
@@ -96,9 +100,12 @@ service cloud.firestore {
         isAdmin() ||
         (isSalesman() && request.resource.data.createdBySalesman == request.auth.uid)
       );
-      // Only admins can update colleges (salesmen and college admins cannot update)
-      // This prevents college_admin from changing plan, limit, or college name
-      allow update: if request.auth != null && isAdmin();
+      // Admins can update any college
+      // Salesmen can update colleges they created (for plan management)
+      allow update: if request.auth != null && (
+        isAdmin() ||
+        (isSalesman() && resource.data.createdBySalesman == request.auth.uid)
+      );
       // Admins and salesmen can delete colleges (salesmen can only delete their own)
       allow delete: if request.auth != null && (
         isAdmin() ||

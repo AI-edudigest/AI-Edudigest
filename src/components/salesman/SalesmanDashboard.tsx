@@ -14,12 +14,14 @@ import {
   getCollegesBySalesman, 
   addCollege,
   deleteCollege,
+  updateCollegeBySalesman,
   getCollegeAdminsBySalesman,
   addCollegeAdmin,
   deleteCollegeAdmin,
   getCollegeUserStats,
   subscribeToCollegeUserStats,
-  getCurrentUser
+  getCurrentUser,
+  formatPlanDuration
 } from '../../utils/firebase';
 
 interface College {
@@ -82,7 +84,17 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
     state: '',
     city: '',
     email: '',
-    password: ''
+    password: '',
+    userLimit: 10,
+    planDurationDays: 30 // Default to 1 month (30 days)
+  });
+
+  // Edit Plan Modal State
+  const [showEditPlan, setShowEditPlan] = useState(false);
+  const [editingCollegeId, setEditingCollegeId] = useState<string | null>(null);
+  const [planData, setPlanData] = useState({
+    userLimit: 10,
+    planDurationDays: 30 // Default to 1 month (30 days)
   });
 
   const currentUser = getCurrentUser();
@@ -232,7 +244,9 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
         affiliation: '',
         location: '',
         pincode: '',
-        website: ''
+        website: '',
+        userLimit: newCollege.userLimit,
+        planDurationDays: newCollege.planDurationDays
       };
       
       const collegeResult = await addCollege(collegeData, currentUser.uid);
@@ -267,7 +281,9 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
         state: '',
         city: '',
         email: '',
-        password: ''
+        password: '',
+        userLimit: 10,
+        planDurationDays: 30
       });
       await loadData();
     } catch (err: any) {
@@ -328,6 +344,48 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
 
   const handleCollegeSelect = (collegeId: string) => {
     setSelectedCollege(selectedCollege === collegeId ? null : collegeId);
+  };
+
+  const handleEditPlan = (college: College) => {
+    setEditingCollegeId(college.id);
+    setPlanData({
+      userLimit: college.userLimit || 10,
+      planDurationDays: college.planDurationDays || 30
+    });
+    setShowEditPlan(true);
+  };
+
+  const handleUpdatePlan = async () => {
+    if (!editingCollegeId || !currentUser) return;
+
+    if (planData.userLimit < 1 || planData.userLimit > 30) {
+      setError('User limit must be between 1 and 30');
+      return;
+    }
+
+    const validDurations = [5, 15, 30, 90, 180, 270, 360];
+    if (!validDurations.includes(planData.planDurationDays)) {
+      setError('Plan duration must be 5 days, 15 days, 1 month, 3 months, 6 months, 9 months, or 12 months');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await updateCollegeBySalesman(editingCollegeId, planData, currentUser.uid);
+      if (result.success) {
+        setShowEditPlan(false);
+        setEditingCollegeId(null);
+        await loadData();
+      } else {
+        setError(result.error || 'Failed to update plan');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to update plan');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getAdminsForCollege = (collegeId: string) => {
@@ -551,9 +609,16 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
                         </div>
 
                         {/* Subscription Plan */}
-                        {(college.planDurationDays || college.userLimit || college.planStartDate || college.planEndDate) && (
-                          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                            <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Subscription Plan</h4>
+                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-semibold text-gray-900 dark:text-white">Subscription Plan</h4>
+                            <button
+                              onClick={() => handleEditPlan(college)}
+                              className="px-3 py-1 text-sm bg-[#9b0101] text-white rounded-lg hover:bg-[#7a0101] transition-colors"
+                            >
+                              Edit Plan
+                            </button>
+                          </div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                               {/* Plan Status */}
                               {college.planEndDate && (
@@ -575,7 +640,7 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
                               {college.planDurationDays && (
                                 <div>
                                   <span className="text-gray-600 dark:text-gray-400">Duration:</span>
-                                  <span className="ml-2 text-gray-900 dark:text-white font-medium">{college.planDurationDays} Days</span>
+                                  <span className="ml-2 text-gray-900 dark:text-white font-medium">{formatPlanDuration(college.planDurationDays)}</span>
                                 </div>
                               )}
                               {college.userLimit && (
@@ -605,8 +670,7 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
                                 </div>
                               )}
                             </div>
-                          </div>
-                        )}
+                        </div>
 
                         {/* User Statistics */}
                         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
@@ -672,12 +736,31 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
 
       {/* Add College Modal */}
       {showAddCollege && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">Add New College</h3>
+              <button
+                onClick={() => {
+                  setShowAddCollege(false);
+                  setNewCollege({
+                    name: '',
+                    type: '',
+                    state: '',
+                    city: '',
+                    email: '',
+                    password: '',
+                    userLimit: 10,
+                    planDurationDays: 30
+                  });
+                  setError(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <XCircle className="w-6 h-6" />
+              </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   College Name <span className="text-red-600">*</span>
@@ -754,8 +837,42 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
                   required
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  User Limit <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="30"
+                  value={newCollege.userLimit}
+                  onChange={(e) => setNewCollege({ ...newCollege, userLimit: parseInt(e.target.value) || 10 })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Between 1 and 30 users</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Plan Duration <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={newCollege.planDurationDays}
+                  onChange={(e) => setNewCollege({ ...newCollege, planDurationDays: parseInt(e.target.value) })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  required
+                >
+                  <option value={5}>5 days</option>
+                  <option value={15}>15 days</option>
+                  <option value={30}>1 month</option>
+                  <option value={90}>3 months</option>
+                  <option value={180}>6 months</option>
+                  <option value={270}>9 months</option>
+                  <option value={360}>12 months</option>
+                </select>
+              </div>
             </div>
-            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3 bg-gray-50 dark:bg-gray-900/50 rounded-b-lg">
               <button
                 onClick={() => {
                   setShowAddCollege(false);
@@ -765,7 +882,9 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
                     state: '',
                     city: '',
                     email: '',
-                    password: ''
+                    password: '',
+                    userLimit: 10,
+                    planDurationDays: 30 // Default to 1 month
                   });
                   setError(null);
                 }}
@@ -779,6 +898,72 @@ const SalesmanDashboard: React.FC<SalesmanDashboardProps> = ({ onLogout }) => {
                 className="px-4 py-2 bg-[#9b0101] text-white rounded-lg hover:bg-[#7a0101] transition-colors disabled:opacity-50"
               >
                 {loading ? 'Adding...' : 'Add College'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Plan Modal */}
+      {showEditPlan && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Edit Plan</h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  User Limit <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="30"
+                  value={planData.userLimit}
+                  onChange={(e) => setPlanData({ ...planData, userLimit: parseInt(e.target.value) || 10 })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Between 1 and 30 users</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Plan Duration <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={planData.planDurationDays}
+                  onChange={(e) => setPlanData({ ...planData, planDurationDays: parseInt(e.target.value) })}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  required
+                >
+                  <option value={5}>5 days</option>
+                  <option value={15}>15 days</option>
+                  <option value={30}>1 month</option>
+                  <option value={90}>3 months</option>
+                  <option value={180}>6 months</option>
+                  <option value={270}>9 months</option>
+                  <option value={360}>12 months</option>
+                </select>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowEditPlan(false);
+                  setEditingCollegeId(null);
+                  setError(null);
+                }}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdatePlan}
+                disabled={loading}
+                className="px-4 py-2 bg-[#9b0101] text-white rounded-lg hover:bg-[#7a0101] transition-colors disabled:opacity-50"
+              >
+                {loading ? 'Updating...' : 'Update Plan'}
               </button>
             </div>
           </div>

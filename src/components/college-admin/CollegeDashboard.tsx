@@ -15,7 +15,8 @@ import {
   getCollegeInfoByCollegeAdmin,
   addCollegeUser,
   deleteCollegeUser,
-  getCurrentUser
+  getCurrentUser,
+  formatPlanDuration
 } from '../../utils/firebase';
 
 interface CollegeUser {
@@ -23,7 +24,7 @@ interface CollegeUser {
   email: string;
   firstName?: string;
   lastName?: string;
-  role: 'leader' | 'educator';
+  role: 'leader' | 'faculty' | 'administrative_staff';
   institution?: string;
   institutionId?: string;
 }
@@ -55,7 +56,7 @@ const CollegeDashboard: React.FC<CollegeDashboardProps> = ({ onBackToHome, onLog
     email: '',
     firstName: '',
     lastName: '',
-    role: 'leader' as 'leader' | 'educator' | 'faculty' | 'admin_staff' | 'administrative_staff',
+    role: 'leader' as 'leader' | 'faculty' | 'administrative_staff',
     password: ''
   });
   const [addingUser, setAddingUser] = useState(false);
@@ -290,7 +291,7 @@ const CollegeDashboard: React.FC<CollegeDashboardProps> = ({ onBackToHome, onLog
                 <p className="text-lg font-medium text-gray-900 dark:text-white">
                   {(() => {
                     if (college.planDurationDays) {
-                      return `${college.planDurationDays} Days`;
+                      return formatPlanDuration(college.planDurationDays);
                     }
                     // Calculate duration from dates if planDurationDays is not set
                     if (college.planStartDate && college.planEndDate) {
@@ -548,23 +549,6 @@ const CollegeDashboard: React.FC<CollegeDashboardProps> = ({ onBackToHome, onLog
                 />
               </div>
 
-              {/* Role */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Role <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={newUser.role}
-                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value as 'leader' | 'educator' | 'faculty' | 'admin_staff' | 'administrative_staff' })}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="leader">Leader</option>
-                  <option value="faculty">Faculty</option>
-                  <option value="admin_staff">Administrative staff</option>
-                </select>
-              </div>
-
               {/* Password */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -579,6 +563,23 @@ const CollegeDashboard: React.FC<CollegeDashboardProps> = ({ onBackToHome, onLog
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Minimum 6 characters</p>
+              </div>
+
+              {/* Role */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Role <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value as 'leader' | 'faculty' | 'administrative_staff' })}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="leader">Leader</option>
+                  <option value="faculty">Faculty</option>
+                  <option value="administrative_staff">Administrative staff</option>
+                </select>
               </div>
 
               {/* Submit Buttons */}

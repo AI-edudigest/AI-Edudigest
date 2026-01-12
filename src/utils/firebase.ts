@@ -332,6 +332,49 @@ export const deleteUser = async (userId: string) => {
   }
 };
 
+// Create user by platform admin
+export const createUserByAdmin = async (userData: {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  collegeId?: string;
+  collegeName?: string;
+}) => {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    // Verify user is admin
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (!userDoc.exists() || userDoc.data().role !== 'admin') {
+      throw new Error('Unauthorized: Only platform admins can create users');
+    }
+
+    // Call Cloud Function to create user (uses Admin SDK, admin stays logged in)
+    const createUserByAdminFn = httpsCallable(functions, 'createUserByAdmin');
+
+    const result = await createUserByAdminFn({
+      email: userData.email,
+      password: userData.password,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      role: userData.role,
+      collegeId: userData.collegeId,
+      collegeName: userData.collegeName
+    });
+
+    const resultData = result.data as { success: boolean; userId: string; message?: string };
+    return { success: true, userId: resultData.userId, error: null };
+  } catch (error: any) {
+    console.error('Error creating user:', error);
+    return { success: false, userId: null, error: error.message };
+  }
+};
+
 // Admin functions
 export const getAllUsers = async () => {
   try {
@@ -2115,6 +2158,8 @@ export const addCollege = async (collegeData: {
   state?: string;
   pincode?: string;
   website?: string;
+  userLimit?: number; // 1 to 30
+  planDurationDays?: number; // 2, 5, 30, or 60
 }, salesmanUid: string) => {
   try {
     const user = auth.currentUser;
@@ -2122,11 +2167,21 @@ export const addCollege = async (collegeData: {
       throw new Error('Unauthorized: Only the creating salesman can add colleges');
     }
 
+    // Validate plan parameters if provided
+    if (collegeData.userLimit !== undefined) {
+      if (collegeData.userLimit < 1 || collegeData.userLimit > 30) {
+        throw new Error('Invalid user limit. Must be between 1 and 30');
+      }
+    }
+    if (collegeData.planDurationDays !== undefined) {
+      convertPlanDurationToDays(collegeData.planDurationDays); // Validates and throws if invalid
+    }
+
     // Generate a short, readable collegeId (max 5 characters)
     // Format: First 2 letters of college name + 3 digits (e.g., MS101, SH201)
     const readableCollegeId = await generateReadableCollegeId(collegeData.name);
 
-    const collegeDoc = {
+    const collegeDoc: any = {
       collegeId: readableCollegeId,
       name: collegeData.name,
       shortName: collegeData.shortName || '',
@@ -2142,6 +2197,15 @@ export const addCollege = async (collegeData: {
       createdAt: new Date(),
       updatedAt: new Date()
     };
+
+    // Add plan details if provided
+    if (collegeData.userLimit !== undefined && collegeData.planDurationDays !== undefined) {
+      const { userLimit, planStartDate, planEndDate } = calculatePlanDetails(collegeData.userLimit, collegeData.planDurationDays);
+      collegeDoc.userLimit = userLimit;
+      collegeDoc.planDurationDays = collegeData.planDurationDays;
+      collegeDoc.planStartDate = planStartDate;
+      collegeDoc.planEndDate = planEndDate;
+    }
 
     const docRef = await addDoc(collection(db, 'colleges'), collegeDoc);
     // Return both Firestore document ID and the human-readable collegeId field
@@ -2175,6 +2239,69 @@ export const deleteCollege = async (collegeId: string, salesmanUid: string) => {
     return { success: true, error: null };
   } catch (error: any) {
     console.error('Error deleting college:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Update college by salesman (including plan management)
+export const updateCollegeBySalesman = async (collegeId: string, collegeData: {
+  userLimit?: number; // 1 to 30
+  planDurationDays?: number; // 2, 5, 30, or 60
+}, salesmanUid: string) => {
+  try {
+    const user = auth.currentUser;
+    if (!user || user.uid !== salesmanUid) {
+      throw new Error('Unauthorized: Only the creating salesman can update colleges');
+    }
+
+    // Verify salesman is active
+    const salesmanDoc = await getDoc(doc(db, 'users', salesmanUid));
+    if (!salesmanDoc.exists()) {
+      throw new Error('Salesman user not found');
+    }
+    const salesmanData = salesmanDoc.data();
+    if (salesmanData.role !== 'salesman') {
+      throw new Error('Unauthorized: User is not a salesman');
+    }
+    if (salesmanData.active !== true) {
+      throw new Error('Unauthorized: Salesman account is not active');
+    }
+
+    // Verify college belongs to salesman
+    const collegeDocRef = doc(db, 'colleges', collegeId);
+    const collegeDoc = await getDoc(collegeDocRef);
+    if (!collegeDoc.exists()) {
+      throw new Error('College not found');
+    }
+    const existingData = collegeDoc.data();
+    if (existingData.createdBySalesman !== salesmanUid) {
+      throw new Error('Unauthorized: College does not belong to this salesman');
+    }
+
+    const updateData: any = {
+      updatedAt: new Date()
+    };
+
+    // Update plan if userLimit or planDurationDays is provided
+    const userLimit = collegeData.userLimit !== undefined ? collegeData.userLimit : existingData.userLimit;
+    const planDurationDays = collegeData.planDurationDays !== undefined ? collegeData.planDurationDays : existingData.planDurationDays;
+
+    if (collegeData.userLimit !== undefined || collegeData.planDurationDays !== undefined) {
+      if (userLimit < 1 || userLimit > 30) {
+        throw new Error('Invalid user limit. Must be between 1 and 30');
+      }
+      convertPlanDurationToDays(planDurationDays); // Validates and throws if invalid
+      const { userLimit: calculatedLimit, planStartDate, planEndDate } = calculatePlanDetails(userLimit, planDurationDays);
+      updateData.userLimit = calculatedLimit;
+      updateData.planDurationDays = planDurationDays;
+      updateData.planStartDate = planStartDate;
+      updateData.planEndDate = planEndDate;
+    }
+
+    await updateDoc(collegeDocRef, updateData);
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error('Error updating college by salesman:', error);
     return { success: false, error: error.message };
   }
 };
@@ -2696,14 +2823,14 @@ export const addCollegeUser = async (userData: {
   email: string;
   firstName: string;
   lastName: string;
-  role: 'leader' | 'educator' | 'faculty' | 'admin_staff' | 'administrative_staff';
+  role: 'leader' | 'faculty' | 'administrative_staff';
   password: string;
 }, collegeAdminUid: string) => {
   try {
-    // Validate role
-    const allowedRoles = ['leader', 'educator', 'faculty', 'admin_staff', 'administrative_staff'];
+    // Validate role - only allow: leader, faculty, administrative_staff
+    const allowedRoles = ['leader', 'faculty', 'administrative_staff'];
     if (!allowedRoles.includes(userData.role)) {
-      throw new Error('Invalid role. Only leader, faculty, and administrative staff roles are allowed.');
+      throw new Error('Invalid role. Only leader, faculty, and administrative_staff roles are allowed.');
     }
 
     // Get college admin's profile to get their collegeId and college name
@@ -2804,6 +2931,30 @@ export const deleteCollegeUser = async (userId: string, collegeAdminUid: string)
 // ==================== ADMIN COLLEGE MANAGEMENT FUNCTIONS ====================
 
 // Helper function to calculate plan details
+// Helper function to convert plan duration to days
+// Accepts: 5, 15, 30, 90, 180, 270, 360 (days)
+// Where: 30 = 1 month, 90 = 3 months, 180 = 6 months, 270 = 9 months, 360 = 12 months
+const convertPlanDurationToDays = (duration: number): number => {
+  // Valid durations: 5, 15, 30, 90, 180, 270, 360
+  const validDurations = [5, 15, 30, 90, 180, 270, 360];
+  if (!validDurations.includes(duration)) {
+    throw new Error('Invalid plan duration. Must be 5, 15, 30, 90, 180, 270, or 360 days');
+  }
+  return duration;
+};
+
+// Helper function to format plan duration for display
+export const formatPlanDuration = (days: number): string => {
+  if (days === 5) return '5 days';
+  if (days === 15) return '15 days';
+  if (days === 30) return '1 month';
+  if (days === 90) return '3 months';
+  if (days === 180) return '6 months';
+  if (days === 270) return '9 months';
+  if (days === 360) return '12 months';
+  return `${days} Days`; // Fallback
+};
+
 const calculatePlanDetails = (userLimit: number, planDurationDays: number) => {
   const planStartDate = new Date();
   const planEndDate = new Date();
@@ -2872,9 +3023,10 @@ export const createCollegeByAdmin = async (collegeData: {
       throw new Error('Invalid user limit. Must be between 1 and 30');
     }
 
-    if (!collegeData.planDurationDays || ![2, 5, 30, 60].includes(collegeData.planDurationDays)) {
-      throw new Error('Invalid plan duration. Must be 2, 5, 30, or 60 days');
+    if (!collegeData.planDurationDays) {
+      throw new Error('Plan duration is required');
     }
+    convertPlanDurationToDays(collegeData.planDurationDays); // Validates and throws if invalid
 
     const { userLimit, planStartDate, planEndDate } = calculatePlanDetails(collegeData.userLimit, collegeData.planDurationDays);
 
@@ -2965,9 +3117,7 @@ export const updateCollegeByAdmin = async (collegeId: string, collegeData: {
       if (userLimit < 1 || userLimit > 30) {
         throw new Error('Invalid user limit. Must be between 1 and 30');
       }
-      if (![2, 5, 30, 60].includes(planDurationDays)) {
-        throw new Error('Invalid plan duration. Must be 2, 5, 30, or 60 days');
-      }
+      convertPlanDurationToDays(planDurationDays); // Validates and throws if invalid
       const { userLimit: calculatedLimit, planStartDate, planEndDate } = calculatePlanDetails(userLimit, planDurationDays);
       updateData.userLimit = calculatedLimit;
       updateData.planDurationDays = planDurationDays;

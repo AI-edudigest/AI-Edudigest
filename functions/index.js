@@ -5,7 +5,7 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 /**
- * Cloud Function to create college users (leaders/educators)
+ * Cloud Function to create college users (leaders/faculty/administrative staff)
  * This function uses Admin SDK to create users without signing them in,
  * which allows the college admin to stay logged in.
  */
@@ -59,11 +59,12 @@ exports.createCollegeUser = functions.https.onCall(async (data, context) => {
       );
     }
 
-    // Validate role
-    if (role !== 'leader' && role !== 'educator') {
+    // Validate role - only allow: leader, faculty, administrative_staff
+    const allowedRoles = ['leader', 'faculty', 'administrative_staff'];
+    if (!allowedRoles.includes(role)) {
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'Invalid role. Only leader and educator roles are allowed.'
+        'Invalid role. Only leader, faculty, and administrative_staff roles are allowed.'
       );
     }
 
@@ -94,12 +95,13 @@ exports.createCollegeUser = functions.https.onCall(async (data, context) => {
       }
     }
 
-    // Check user limit
+    // Check user limit - count leader, faculty, and administrative_staff
+    // Backward compatibility: also count 'educator' for existing users
     if (collegeData.userLimit !== undefined) {
       const usersSnapshot = await admin.firestore()
         .collection('users')
         .where('institutionId', '==', collegeId)
-        .where('role', 'in', ['leader', 'educator'])
+        .where('role', 'in', ['leader', 'faculty', 'administrative_staff', 'educator'])
         .get();
 
       const currentUserCount = usersSnapshot.size;
@@ -258,6 +260,155 @@ exports.createCollegeAdmin = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError(
       'internal',
       'Failed to create college admin: ' + error.message
+    );
+  }
+});
+
+/**
+ * Cloud Function to create users by platform admin
+ * This function allows platform admins to create users with any role (including salesman)
+ */
+exports.createUserByAdmin = functions.https.onCall(async (data, context) => {
+  // Verify user is authenticated
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'User must be authenticated'
+    );
+  }
+
+  const adminUid = context.auth.uid;
+
+  try {
+    // Verify user is platform admin
+    const adminDoc = await admin.firestore().collection('users').doc(adminUid).get();
+
+    if (!adminDoc.exists) {
+      throw new functions.https.HttpsError(
+        'not-found',
+        'Admin user not found'
+      );
+    }
+
+    const adminData = adminDoc.data();
+    if (adminData.role !== 'admin') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Only platform admins can create users'
+      );
+    }
+
+    // Extract data from request
+    const {
+      email,
+      password,
+      firstName,
+      lastName,
+      role
+    } = data;
+
+    // Validate required fields
+    if (!email || !password || !firstName || !lastName || !role) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Missing required fields: email, password, firstName, lastName, and role are required'
+      );
+    }
+
+    // Normalize role to lowercase for validation and storage
+    const normalizedRole = typeof role === 'string' ? role.toLowerCase().trim() : '';
+
+    // Validate role - allow common roles (lowercase only)
+    const allowedRoles = ['admin', 'salesman', 'college_admin', 'leader', 'faculty', 'administrative_staff'];
+    if (!allowedRoles.includes(normalizedRole)) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        `Invalid role. Allowed roles: ${allowedRoles.join(', ')}`
+      );
+    }
+
+    // Check if user with this email already exists
+    try {
+      const existingUser = await admin.auth().getUserByEmail(email);
+      if (existingUser) {
+        throw new functions.https.HttpsError(
+          'already-exists',
+          'User with this email already exists'
+        );
+      }
+    } catch (error) {
+      // If error is not "user not found", re-throw it
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      // If it's "user not found", continue (this is what we want)
+      if (error.code !== 'auth/user-not-found') {
+        throw error;
+      }
+    }
+
+    // Create user with Admin SDK (doesn't sign them in)
+    let userRecord;
+    try {
+      userRecord = await admin.auth().createUser({
+        email: email,
+        password: password,
+        displayName: `${firstName} ${lastName}`,
+        emailVerified: false
+      });
+    } catch (error) {
+      console.error('createUserByAdmin - auth createUser error:', error);
+      const code = error.code || '';
+      if (code === 'auth/email-already-exists') {
+        throw new functions.https.HttpsError('already-exists', 'User with this email already exists');
+      }
+      if (code === 'auth/invalid-email') {
+        throw new functions.https.HttpsError('invalid-argument', 'Invalid email address.');
+      }
+      if (code === 'auth/invalid-password' || code === 'auth/weak-password') {
+        throw new functions.https.HttpsError('invalid-argument', 'Weak or invalid password (min 6 characters).');
+      }
+      if (code === 'auth/operation-not-allowed') {
+        throw new functions.https.HttpsError('permission-denied', 'Email/password sign-in is disabled in this project.');
+      }
+      throw new functions.https.HttpsError('internal', `Auth error: ${error.message || code || 'Unknown error'}`);
+    }
+
+    // Prepare user document data
+    const userData = {
+      email: email,
+      firstName: firstName,
+      lastName: lastName,
+      role: normalizedRole,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      active: normalizedRole === 'salesman' ? false : true // Salesmen are inactive by default
+    };
+
+    // Add institution fields if role is college_admin
+    if (normalizedRole === 'college_admin' && data.collegeId && data.collegeName) {
+      userData.institution = data.collegeName;
+      userData.institutionId = data.collegeId;
+    }
+
+    // Create Firestore document
+    await admin.firestore().collection('users').doc(userRecord.uid).set(userData);
+
+    return {
+      success: true,
+      userId: userRecord.uid,
+      message: 'User created successfully'
+    };
+  } catch (error) {
+    console.error('createUserByAdmin - error:', error);
+    
+    // If it's already an HttpsError, re-throw it
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    
+    throw new functions.https.HttpsError(
+      'internal',
+      'Failed to create user: ' + (error.message || 'Unknown error')
     );
   }
 });

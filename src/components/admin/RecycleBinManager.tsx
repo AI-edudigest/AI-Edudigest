@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, RefreshCw, Calendar, FileText, Megaphone, BookOpen, MessageSquare, Clock, RotateCcw } from 'lucide-react';
+import { Trash2, RefreshCw, Calendar, FileText, Megaphone, BookOpen, MessageSquare, Clock, RotateCcw, XCircle } from 'lucide-react';
 
 interface DeletedItem {
   id: string;
@@ -160,31 +160,36 @@ const RecycleBinManager: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Recycle Bin</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage deleted items. Items will be permanently deleted after 15 days.
-          </p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Total Deleted: {deletedItems.length}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Recycle Bin</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
+                Manage deleted items. Items will be permanently deleted after 15 days.
+              </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 rounded-lg">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Total Deleted: <span className="text-[#9b0101] dark:text-red-400">{deletedItems.length}</span>
+                </span>
+              </div>
+              <button
+                onClick={loadDeletedItems}
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+                title="Refresh Recycle Bin"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Refresh</span>
+              </button>
+            </div>
           </div>
-          <button
-            onClick={loadDeletedItems}
-            className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
-            title="Refresh Recycle Bin"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Refresh</span>
-          </button>
         </div>
-      </div>
 
-      {/* Collection Filter */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex flex-wrap gap-2">
+        {/* Collection Filter */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Filter by Collection</h2>
+          <div className="flex flex-wrap gap-2">
           {collections.map((collection) => {
             const Icon = collection.icon;
             const count = collection.id === 'all'
@@ -213,23 +218,27 @@ const RecycleBinManager: React.FC = () => {
               </button>
             );
           })}
+          </div>
         </div>
-      </div>
 
-      {/* Deleted Items List */}
-      {filteredItems.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          <Trash2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Deleted Items</h3>
-          <p className="text-gray-600 dark:text-gray-400">
-            {filteredCollection === 'all' 
-              ? 'No items have been deleted yet.'
-              : `No deleted items found in ${collections.find(c => c.id === filteredCollection)?.label}.`
-            }
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Deleted Items List */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Deleted Items {filteredCollection !== 'all' && `(${collections.find(c => c.id === filteredCollection)?.label})`}
+          </h2>
+          {filteredItems.length === 0 ? (
+            <div className="text-center py-12">
+              <Trash2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Deleted Items</h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                {filteredCollection === 'all' 
+                  ? 'No items have been deleted yet.'
+                  : `No deleted items found in ${collections.find(c => c.id === filteredCollection)?.label}.`
+                }
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredItems.map((item) => {
             const daysRemaining = getDaysUntilPermanentDelete(item.deletedAt);
             const isExpired = daysRemaining !== null && daysRemaining === 0;
@@ -291,39 +300,50 @@ const RecycleBinManager: React.FC = () => {
               </div>
             );
           })}
+            </div>
+          )}
         </div>
-      )}
 
       {/* Restore Confirmation Modal */}
       {showRestoreConfirm && itemToRestore && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-                  <RotateCcw className="w-5 h-5 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Restore Item
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    This will restore the item to its original location
-                  </p>
-                </div>
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Restore Item</h3>
+                <button
+                  onClick={() => {
+                    setShowRestoreConfirm(false);
+                    setItemToRestore(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  <XCircle className="w-6 h-6" />
+                </button>
               </div>
-              
+            </div>
+            <div className="p-6">
               <div className="mb-6">
-                <p className="text-gray-700 dark:text-gray-300">
-                  Are you sure you want to restore{' '}
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    "{getItemTitle(itemToRestore)}"
-                  </span>
-                  {' '}from {itemToRestore.collection}?
-                </p>
+                <div className="flex items-start space-x-3 mb-4">
+                  <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                    <RotateCcw className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      This will restore the item to its original location
+                    </p>
+                    <p className="text-gray-700 dark:text-gray-300">
+                      Are you sure you want to restore{' '}
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        "{getItemTitle(itemToRestore)}"
+                      </span>
+                      {' '}from <span className="font-medium text-gray-800 dark:text-gray-200">{itemToRestore.collection}</span>?
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex space-x-3">
+              <div className="flex space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => {
                     setShowRestoreConfirm(false);

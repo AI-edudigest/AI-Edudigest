@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Edit, Trash2, X, Calendar, Users, AlertCircle } from 'lucide-react';
-import { getAllColleges, createCollegeByAdmin, updateCollegeByAdmin, getAllUsers, getCurrentUser } from '../../utils/firebase';
+import { Building2, Plus, Edit, Trash2, X, AlertCircle } from 'lucide-react';
+import { getAllColleges, createCollegeByAdmin, updateCollegeByAdmin, getAllUsers, formatPlanDuration } from '../../utils/firebase';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
 
@@ -70,8 +70,28 @@ const CollegesManager: React.FC = () => {
       const result = await getAllColleges();
       if (result.error) {
         setError(result.error);
+        setColleges([]);
       } else {
-        setColleges(result.colleges || []);
+        // Ensure all colleges have required fields
+        const collegesList = (result.colleges || []).map((college: any) => ({
+          id: college.id || '',
+          name: college.name || 'Unnamed College',
+          shortName: college.shortName,
+          type: college.type,
+          affiliation: college.affiliation,
+          location: college.location,
+          city: college.city,
+          state: college.state,
+          pincode: college.pincode,
+          website: college.website,
+          createdBySalesman: college.createdBySalesman,
+          planDurationDays: college.planDurationDays,
+          userLimit: college.userLimit,
+          planStartDate: college.planStartDate,
+          planEndDate: college.planEndDate,
+          createdAt: college.createdAt
+        })) as College[];
+        setColleges(collegesList);
       }
     } catch (error: any) {
       setError(error.message || 'Failed to fetch colleges');
@@ -252,7 +272,7 @@ const CollegesManager: React.FC = () => {
                                 ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                                 : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                             }`}>
-                              {college.planDurationDays ? `${college.planDurationDays} Days` : 'No Plan'}
+                              {college.planDurationDays ? formatPlanDuration(college.planDurationDays) : 'No Plan'}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
@@ -360,10 +380,13 @@ const CollegesManager: React.FC = () => {
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#9b0101] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   required
                 >
-                  <option value={2}>2 Days</option>
-                  <option value={5}>5 Days</option>
-                  <option value={30}>30 Days</option>
-                  <option value={60}>60 Days</option>
+                  <option value={5}>5 days</option>
+                  <option value={15}>15 days</option>
+                  <option value={30}>1 month</option>
+                  <option value={90}>3 months</option>
+                  <option value={180}>6 months</option>
+                  <option value={270}>9 months</option>
+                  <option value={360}>12 months</option>
                 </select>
               </div>
 
