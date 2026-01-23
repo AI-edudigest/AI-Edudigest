@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Save, X, GripVertical, Newspaper, Zap, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, GripVertical, Newspaper, Zap, Filter } from 'lucide-react';
 import { getNewsUpdates, createNewsUpdate, updateNewsUpdate, deleteNewsUpdate, reorderNewsUpdates } from '../../utils/firebase';
 
 interface NewsUpdate {
@@ -40,7 +40,7 @@ const LatestUpdatesManager: React.FC = () => {
       console.log('🔄 Fetching news updates...');
       const data = await getNewsUpdates();
       console.log('📊 Fetched updates:', data);
-      setUpdates(data);
+      setUpdates(data as NewsUpdate[]);
     } catch (error) {
       console.error('❌ Error fetching updates:', error);
       alert('Error fetching updates: ' + error);
@@ -308,7 +308,7 @@ const LatestUpdatesManager: React.FC = () => {
           </div>
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredUpdates.map((update, index) => (
+            {filteredUpdates.map((update) => (
               <div
                 key={update.id}
                 draggable

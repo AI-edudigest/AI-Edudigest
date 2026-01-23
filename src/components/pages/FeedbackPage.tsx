@@ -5,9 +5,7 @@ import {
   Send, 
   CheckCircle, 
   AlertCircle,
-  ChevronLeft,
-  User,
-  Mail
+  ChevronLeft
 } from 'lucide-react';
 import { BackButtonProps } from '../../types/common';
 import { getFeedbackForms, submitFeedbackForm } from '../../utils/firebase';

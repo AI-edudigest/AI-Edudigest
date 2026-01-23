@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Users, FileText, Megaphone, Settings, Plus, Edit, Trash2, Eye, Database, BookOpen, Calendar, Newspaper, Building2 } from 'lucide-react';
-import { getAllUsers, getArticles, getSponsors, getAllColleges, getCurrentUser } from '../../utils/firebase';
+import { Users, FileText, Megaphone, Settings, Database, BookOpen, Calendar, Newspaper, Building2 } from 'lucide-react';
+import { getAllUsers, getArticles, getSponsors, getAllColleges } from '../../utils/firebase';
 import { addSampleArticles, addSampleSponsors } from '../../utils/sampleData';
 import { seedResourceTabs } from '../../utils/seedResourceTabs';
-import { collection, query, where, onSnapshot, getDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
 
 interface AdminDashboardProps {
@@ -165,7 +165,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           // Realtime subscription for student counter from Student App
           const readableCollegeId = college.collegeId || college.id;
           const counterRef = doc(db, 'collegeStudentCounts', readableCollegeId);
-          const unsubscribeCounter = onSnapshot(counterRef, counterDoc => {
+          const unsubscribeCounter = onSnapshot(counterRef, (counterDoc: any) => {
             let extraStudents = 0;
             if (counterDoc.exists()) {
               const counterData = counterDoc.data() as any;

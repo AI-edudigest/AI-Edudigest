@@ -33,7 +33,7 @@ interface TopBarProps {
   currentTopicName?: string | null;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ onLogout, pageInfo, isAdmin, onAdminPanelToggle, currentTopicName }) => {
+const TopBar: React.FC<TopBarProps> = ({ onLogout, pageInfo, onAdminPanelToggle, currentTopicName }) => {
   const { searchQuery, setSearchQuery, performSearch } = useSearch();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);

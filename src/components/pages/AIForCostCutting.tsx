@@ -1,5 +1,4 @@
 import React from 'react';
-import { DollarSign } from 'lucide-react';
 
 const AIForCostCutting: React.FC = () => {
   return (

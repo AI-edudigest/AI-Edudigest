@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Lightbulb } from 'lucide-react';
 import ArticleTTS from '../common/ArticleTTS';
 
 const AIAdoptionPage: React.FC = () => {

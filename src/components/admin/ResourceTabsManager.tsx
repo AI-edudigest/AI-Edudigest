@@ -9,8 +9,6 @@ import {
   ArrowUp,
   ArrowDown,
   ExternalLink,
-  Eye,
-  EyeOff,
   Settings
 } from 'lucide-react';
 import { 
@@ -29,6 +27,10 @@ interface ResourceTab {
   order: number;
   createdAt: any;
   updatedAt: any;
+  description?: string;
+  category?: string;
+  color?: string;
+  link?: string;
 }
 
 interface ResourceTabsManagerProps {
@@ -58,7 +60,7 @@ const ResourceTabsManager: React.FC<ResourceTabsManagerProps> = ({ onManageConte
       console.log('Fetch result:', result);
       if (result.tabs) {
         console.log('Setting Resource Tabs:', result.tabs);
-        setTabs(result.tabs);
+        setTabs(result.tabs as ResourceTab[]);
       } else {
         console.log('No Resource Tabs found or error:', result.error);
       }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit, Trash2, Save, X, Upload, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Upload } from 'lucide-react';
 import { getMagazineCovers, createMagazineCover, updateMagazineCover, deleteMagazineCover, uploadMagazineCoverImage } from '../../utils/firebase';
 
 interface MagazineCover {
@@ -37,7 +37,7 @@ const MagazineCoversManager: React.FC = () => {
     try {
       const result = await getMagazineCovers();
       if (result.covers) {
-        setCovers(result.covers);
+        setCovers(result.covers as MagazineCover[]);
       }
     } catch (error) {
       console.error('Error fetching magazine covers:', error);

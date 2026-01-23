@@ -1,5 +1,4 @@
 import React from 'react';
-import { Megaphone } from 'lucide-react';
 
 const AIForCollegeBranding: React.FC = () => {
   return (

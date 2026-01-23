@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Calendar, MapPin, User, Clock, Edit, History } from 'lucide-react';
+import { Trash2, Calendar, MapPin, User, Clock, History } from 'lucide-react';
 import { subscribeToEvents, deleteEvent, getUserRole } from '../../utils/firebase';
 
 interface Event {
@@ -12,6 +12,7 @@ interface Event {
   location: string;
   createdBy: string;
   createdAt: any;
+  isHistory?: boolean;
 }
 
 const EventsManager: React.FC = () => {

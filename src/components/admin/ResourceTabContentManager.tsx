@@ -54,11 +54,13 @@ const ResourceTabContentManager: React.FC<ResourceTabContentManagerProps> = ({
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingContent, setEditingContent] = useState<TabContent | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Partial<TabContent> & { name: string; description: string; url: string; active: boolean; category: string; date: string; location: string; type: string; author: string; provider: string; duration: string }>({
     name: '',
     description: '',
     url: '',
     active: true,
+    tabId: tabId,
+    order: 0,
     // AI Tools specific
     category: '',
     // Events specific
@@ -95,7 +97,7 @@ const ResourceTabContentManager: React.FC<ResourceTabContentManagerProps> = ({
       console.log('Fetch result:', result);
       if (result.contents) {
         console.log('Setting content:', result.contents);
-        setContents(result.contents);
+        setContents(result.contents as TabContent[]);
       } else {
         console.log('No content found or error:', result.error);
       }
@@ -130,7 +132,16 @@ const ResourceTabContentManager: React.FC<ResourceTabContentManagerProps> = ({
           name: '',
           description: '',
           url: '',
-          active: true
+          active: true,
+          tabId: tabId,
+          order: 0,
+          category: '',
+          date: '',
+          location: '',
+          type: '',
+          author: '',
+          provider: '',
+          duration: ''
         });
         alert('Content saved successfully!');
       } else {
@@ -460,7 +471,7 @@ const ResourceTabContentManager: React.FC<ResourceTabContentManagerProps> = ({
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Current Content Items</h3>
           {contents.length > 0 ? (
             <div className="space-y-3">
-              {contents.map((content, index) => (
+                {contents.map((content) => (
                 <div 
                   key={content.id} 
                   className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"

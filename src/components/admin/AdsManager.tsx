@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Edit, Trash2, Save, X, Upload, Image, XCircle } from 'lucide-react';
-import { getAds, createAd, updateAd, deleteAd, createNotification, uploadAdImage, deleteFile } from '../../utils/firebase';
+import { getAds, createAd, updateAd, deleteAd, createNotification, uploadAdImage } from '../../utils/firebase';
 import { checkFirebaseStorage, getStorageStatus } from '../../utils/firebaseStorageCheck';
 
 interface Ad {
@@ -66,7 +66,7 @@ const AdsManager: React.FC = () => {
       
       if (result.ads) {
         console.log('📝 AdsManager: Setting ads:', result.ads);
-        setAds(result.ads);
+        setAds(result.ads as Ad[]);
       } else {
         console.log('❌ AdsManager: No ads in result');
         setAds([]);
@@ -226,12 +226,6 @@ const AdsManager: React.FC = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  };
-
-  const handleCancel = () => {
-    setShowForm(false);
-    setEditingAd(null);
-    setFormData({ title: '', linkUrl: '', imageUrl: '', active: true });
   };
 
   if (loading) {

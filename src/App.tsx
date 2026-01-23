@@ -53,7 +53,6 @@ function App() {
   const [welcomeMode, setWelcomeMode] = useState<'login' | 'refresh'>('refresh');
   
   // Plan expiry states
-  const [planExpired, setPlanExpired] = useState(false);
   const [planExpiringSoon, setPlanExpiringSoon] = useState(false);
   const [planExpiringDays, setPlanExpiringDays] = useState<number | null>(null);
   
@@ -205,19 +204,15 @@ function App() {
           if (role === 'college_admin' || role === 'college-admin' || role === 'leader' || role === 'leaders' || role === 'educator' || role === 'educators') {
             const planStatus = await checkPlanExpiryStatus(user.uid);
             if (planStatus.status === 'expired') {
-              setPlanExpired(true);
               setPlanExpiringSoon(false);
             } else if (planStatus.status === 'expiring_soon') {
-              setPlanExpired(false);
               setPlanExpiringSoon(true);
               setPlanExpiringDays(planStatus.daysRemaining || null);
             } else {
-              setPlanExpired(false);
               setPlanExpiringSoon(false);
               setPlanExpiringDays(null);
             }
           } else {
-            setPlanExpired(false);
             setPlanExpiringSoon(false);
             setPlanExpiringDays(null);
           }
@@ -244,7 +239,6 @@ function App() {
           setIsSalesman(false);
           setIsSalesmanActive(false);
           setIsCollegeAdmin(false);
-          setPlanExpired(false);
           setPlanExpiringSoon(false);
           setPlanExpiringDays(null);
         }
@@ -256,7 +250,6 @@ function App() {
         setIsSalesmanActive(false);
         setCurrentUser(null);
         setShowProfileCompletion(false);
-        setPlanExpired(false);
         setPlanExpiringSoon(false);
         setPlanExpiringDays(null);
       }

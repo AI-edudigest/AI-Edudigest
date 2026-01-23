@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Edit, Trash2, Save, X, Upload, Image, XCircle } from 'lucide-react';
-import { getSponsors, createSponsor, updateSponsor, deleteSponsor, createNotification, uploadSponsorLogo, deleteFile } from '../../utils/firebase';
+import { getSponsors, createSponsor, updateSponsor, deleteSponsor, createNotification, uploadSponsorLogo } from '../../utils/firebase';
 import { checkFirebaseStorage, getStorageStatus } from '../../utils/firebaseStorageCheck';
 
 interface Sponsor {
@@ -62,7 +62,7 @@ const SponsorsManager: React.FC = () => {
     try {
       const result = await getSponsors();
       if (result.sponsors) {
-        setSponsors(result.sponsors);
+        setSponsors(result.sponsors as Sponsor[]);
       }
     } catch (error) {
       console.error('Error fetching sponsors:', error);
@@ -218,12 +218,6 @@ const SponsorsManager: React.FC = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  };
-
-  const handleCancel = () => {
-    setShowForm(false);
-    setEditingSponsor(null);
-    setFormData({ name: '', website: '', logo: '', active: true });
   };
 
   if (loading) {

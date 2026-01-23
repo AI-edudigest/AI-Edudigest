@@ -5,27 +5,19 @@ import {
   Edit, 
   Trash2, 
   Save, 
-  X, 
   Eye,
-  Search,
-  Filter,
   AlertCircle,
   CheckCircle,
   Star,
   Type,
   Mail,
   MessageCircle,
-  ThumbsUp,
-  ThumbsDown,
-  List,
-  ToggleLeft,
-  ToggleRight
+  List
 } from 'lucide-react';
 import { 
   getFeedbackForm, 
   createFeedbackForm, 
   updateFeedbackForm, 
-  deleteFeedbackForm,
   getFeedbackSubmissions 
 } from '../../utils/firebase';
 
@@ -95,12 +87,13 @@ const FeedbackManager: React.FC = () => {
       if (formResult.error) {
         setError(`Failed to load feedback form: ${formResult.error}`);
       } else {
-        setFeedbackForm(formResult.form);
+        setFeedbackForm(formResult.form as FeedbackForm | null);
         if (formResult.form) {
+          const form = formResult.form as FeedbackForm;
           setFormData({
-            title: formResult.form.title,
-            description: formResult.form.description,
-            fields: formResult.form.fields || []
+            title: form.title,
+            description: form.description,
+            fields: form.fields || []
           });
         }
       }

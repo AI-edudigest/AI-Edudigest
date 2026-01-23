@@ -3,13 +3,9 @@ import {
   Plus, 
   Edit, 
   Trash2, 
-  Save, 
   X, 
-  Eye,
-  EyeOff,
   ArrowUp,
   ArrowDown,
-  GripVertical,
   FileText,
   Mail,
   Hash,
@@ -85,7 +81,7 @@ const FeedbackFormManager: React.FC = () => {
     try {
       const result = await getFeedbackForms();
       if (result.forms) {
-        setForms(result.forms);
+        setForms(result.forms as FeedbackForm[]);
       }
     } catch (error) {
       console.error('Error fetching forms:', error);
@@ -249,10 +245,6 @@ const FeedbackFormManager: React.FC = () => {
     setFields(newFields);
   };
 
-  const getFieldIcon = (type: string) => {
-    const fieldType = fieldTypes.find(ft => ft.value === type);
-    return fieldType ? fieldType.icon : Type;
-  };
 
   if (loading) {
     return (
@@ -372,7 +364,6 @@ const FeedbackFormManager: React.FC = () => {
               </div>
 
               {fields.map((field, index) => {
-                const FieldIcon = getFieldIcon(field.type);
                 return (
                   <div key={field.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-600">
                     <div className="flex items-center justify-between mb-4">

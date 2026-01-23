@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Shield, User, Mail, Calendar, Edit, Clock, AlertCircle, Search, Filter, X, Building2, Trash2, ToggleLeft, ToggleRight, Plus } from 'lucide-react';
+import { Users, Shield, User, Calendar, Edit, Clock, AlertCircle, Search, Filter, X, Building2, Trash2, ToggleLeft, ToggleRight, Plus } from 'lucide-react';
 import { getAllUsers, updateUserRole, updateUserActive, getCurrentUser, deleteUser, createUserByAdmin } from '../../utils/firebase';
 
 interface User {
@@ -72,7 +72,8 @@ Please check:
       if (result.users && Array.isArray(result.users)) {
         console.log('Users fetched:', result.users.length);
         // Sort users by signup date (newest first)
-        const sortedUsers = result.users.sort((a: User, b: User) => {
+        const usersArray = result.users as User[];
+        const sortedUsers = usersArray.sort((a: User, b: User) => {
           const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
           const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
           return dateB.getTime() - dateA.getTime();

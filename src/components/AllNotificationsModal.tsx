@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Bell, Trash2, Check, CheckCheck, Clock, AlertCircle, Info, BookOpen, Wrench, Calendar, GraduationCap, Trophy } from 'lucide-react';
+import { X, Bell, Trash2, Check, CheckCheck, Clock, AlertCircle, Info, BookOpen, Wrench, Calendar, GraduationCap } from 'lucide-react';
 import { getAllNotifications, markAllNotificationsAsRead, clearAllNotifications, deleteNotification } from '../utils/firebase';
 
 interface Notification {

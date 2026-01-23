@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText, Upload, Trash, Edit, Eye, Download } from 'lucide-react';
+import { Plus, FileText, Upload, Trash, Edit, Eye } from 'lucide-react';
 import { uploadPdf, deletePdf, formatFileSize } from '../../utils/storage/uploadPdf';
 import { db } from '../../utils/firebase';
 import { 
@@ -89,7 +89,7 @@ const EguideContentManager: React.FC = () => {
       setUploadError(null);
 
       // Upload PDF first
-      const uploadResult = await uploadPdf(pdfFile, `temp_${Date.now()}`, (progress) => {
+      const uploadResult = await uploadPdf(pdfFile, `temp_${Date.now()}`, (progress: number) => {
         setUploadProgress(progress);
       });
 
@@ -159,7 +159,7 @@ const EguideContentManager: React.FC = () => {
         setIsUploading(true);
         setUploadError(null);
 
-        const uploadResult = await uploadPdf(pdfFile, editingItem.id, (progress) => {
+        const uploadResult = await uploadPdf(pdfFile, editingItem.id, (progress: number) => {
           setUploadProgress(progress);
         });
 

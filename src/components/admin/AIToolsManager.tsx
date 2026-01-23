@@ -71,7 +71,7 @@ const AIToolsManager: React.FC = () => {
       if (error) {
         setError(`Failed to load AI Tools: ${error}`);
       } else {
-        setTools(tools);
+        setTools(tools as AITool[]);
       }
     } catch (error) {
       setError('Failed to load AI Tools');

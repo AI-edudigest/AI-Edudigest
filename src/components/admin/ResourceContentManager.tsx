@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Save, X, Calendar, Clock, MapPin, ExternalLink } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
 import { getResourceContent as getFirebaseResourceContent, createResourceContent, updateResourceContent, deleteResourceContent, createNotification } from '../../utils/firebase';
 import PromptTemplatesManager from './PromptTemplatesManager';
 
@@ -12,6 +12,7 @@ interface ResourceItem {
   rating?: number;
   // For events
   date?: string;
+  time?: string;
   location?: string;
   type?: string;
   // For courses
@@ -98,7 +99,7 @@ const ResourceContentManager: React.FC<ResourceContentManagerProps> = ({ resourc
       try {
         setLoading(true);
         const data = await getFirebaseResourceContent(config.collectionName);
-        setItems(data || []);
+        setItems((data || []) as ResourceItem[]);
     } catch (error) {
       console.error('Error loading items:', error);
     } finally {

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Target } from 'lucide-react';
 
 const AIForStudentSuccess: React.FC = () => {
   return (
